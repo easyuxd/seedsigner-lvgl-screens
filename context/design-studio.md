@@ -18,7 +18,7 @@ The everyday workflow for designing the Redesign in a browser. It shows the **re
 
 Double-click **`Start Design Studio.command`** in the repo folder. (Terminal equivalent: `bash tools/apps/web_runner/studio.sh`.)
 
-The first time, it sets itself up, which takes about 5–10 minutes. Nothing needs Docker. It downloads the LVGL source, installs `cmake` and `ninja` with Homebrew if missing, and installs Emscripten 3.1.74 into `~/emsdk` (about 1 GB). After that it starts in seconds.
+The first time, it sets itself up, which takes about 5–10 minutes. Nothing needs Docker. It downloads the LVGL source, installs `cmake` and `ninja` with Homebrew if missing, and installs Emscripten 3.1.74 into `~/emsdk` (about 1 GB). After that it starts in seconds. On a brand-new Mac, do the one-time steps in [devices.md › Setting up a new Mac](devices.md#setting-up-a-new-mac) first.
 
 Your browser opens on **http://localhost:8000/redesign/** (if that port is busy, it uses the next one and prints it). Leave the Terminal window open while you work; **Ctrl+C** in it stops the studio.
 
@@ -30,7 +30,8 @@ Your browser opens on **http://localhost:8000/redesign/** (if that port is busy,
 |---|---|
 | **Classic \| Redesign** (top left) | Switch designs. Classic opens upstream's interactive runner. |
 | **Screens** (left) | Every screen in `prototype.json`, with its screen type. Click to jump there; Back works from it. |
-| **Devices** (centre) | The 3.5″ (320×480) and 4.3″ (480×800) side by side, at true relative size. Tap them like the real thing. Both follow each other. |
+| **Device 1 · Device 2** (top) | Choose the two boards to compare. Each menu lists every device with its resolution and aspect ratio (Waveshare 3.5″ 320×480 2:3, Waveshare 4.3″ 480×800 3:5, Guition 4.3″ 480×800 3:5, 720p panel 720×1280 9:16). Pick **None** in one to show a single device, centred and larger. A device can't be in both slots. Your choice is kept in the page address, so refreshing or sharing the link keeps it. |
+| **Devices** (centre) | The chosen devices side by side, at true relative size. Tap them like the real thing; they follow each other. Each caption shows the name, the resolution, the aspect ratio, the size in points (always 320 pt wide), the scale (1 pt = N px) and the current zoom. |
 | **Fit / 1×** | Fit both devices on screen, or show them at 100% (1 device pixel = 1 screen pixel). |
 | **Inspect (I)** | Point at anything to see its component, size in points and pixels, the tokens it uses, what it sits inside and, for a screen body, its responsive rule. Click to pin it; **Esc** exits. |
 | **Problems** (right) | Unknown tokens, icons, components or screens, and JSON errors. Keep it empty. |
@@ -68,6 +69,7 @@ The same site is published by GitHub Pages on merge to `main` (`.github/workflow
 | Symptom | Fix |
 |---|---|
 | "Emscripten (emcc) is not on PATH" | Start through the `.command` file or `studio.sh`, not `studio.py` directly. |
+| "The emcc on PATH is … not the pinned one" | A Homebrew Emscripten is installed. Run `brew uninstall emscripten`, then start again. |
 | Status pill says "Server stopped" | The Terminal window was closed or stopped; start the studio again. |
 | Classic shows only English | Expected on a new machine; other languages need the language-packs repo. |
 | A tap doesn't register in an automated or background browser tab | Background tabs run the engine slowly; bring the window to the front. |

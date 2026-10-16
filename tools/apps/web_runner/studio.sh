@@ -42,4 +42,14 @@ fi
 # shellcheck disable=SC1091
 source "$EMSDK_DIR/emsdk_env.sh" >/dev/null 2>&1
 
+# Guard: a Homebrew Emscripten (`brew install emscripten`, currently 6.x) is a different,
+# incompatible version (docs/knowledge/emscripten-growable-arraybuffer-textdecoder.md).
+# emsdk_env puts ~/emsdk first on PATH; make sure that's the emcc we got.
+case "$(command -v emcc)" in
+  "$EMSDK_DIR"/*) ;;
+  *) echo "The emcc on PATH is $(command -v emcc), not the pinned one in $EMSDK_DIR."
+     echo "If it came from Homebrew, remove it with:  brew uninstall emscripten"
+     exit 1 ;;
+esac
+
 exec python3 -u "$SCRIPT_DIR/studio.py" "$@"

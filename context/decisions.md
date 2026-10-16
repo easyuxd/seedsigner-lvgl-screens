@@ -30,3 +30,6 @@ Newest last. Earlier HTML-prototype decisions (live mirror, keyboard styles, des
 | Sequence | PR 1 (studio + foundation screens + docs) → PR 2 (builder fork, device lane) → test on 4.3″ → flash 3.5″ → port remaining flows | Smallest reviewable steps; the browser first | 2026-10-16 |
 | HTML prototype repo | Read-only visual reference until parity, then archived | One place to work, one to compare against | 2026-10-16 |
 | Docs | Root `AGENTS.md` router + `/context/` (ez-context convention); upstream `docs/` untouched | Agents and humans read the same layer | 2026-10-16 |
+| Comparing devices | Two pickers (Device 1, Device 2) over a small device catalog; None in a slot shows one device centred; selection kept in the URL | Compare any two boards, or focus on one, without a page per board | 2026-10-16 |
+| Device catalog | Real boards (Waveshare 3.5″, Waveshare 4.3″, Guition 4.3″) plus the engine's existing 720p size; no guessed specs (the Waveshare 5″'s resolution isn't documented yet) | Each studio size must be the portrait of an engine display profile | 2026-10-16 |
+| Homebrew Emscripten | `studio.sh` refuses to start if the `emcc` on PATH isn't the pinned `~/emsdk` one | A new machine can't silently build with the wrong version | 2026-10-16 |

@@ -39,6 +39,7 @@ The studio prints its URL (default `http://localhost:8000/redesign/`, next free 
 | When the task involves… | Read |
 |---|---|
 | anything (first orientation) | context/overview.md |
+| how a screen goes from JSON to pixels; what to edit where | context/README.md |
 | Redesign visuals, tokens, components, interaction, copy | context/design-system.md |
 | the Design Studio, live reload, the inspector, the designer workflow | context/design-studio.md |
 | code layout, prototype.json schema, the C API, the build, adding a component | context/architecture.md |

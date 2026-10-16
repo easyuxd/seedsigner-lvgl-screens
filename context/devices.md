@@ -51,10 +51,24 @@ When it moves to SeedSigner firmware, it needs the `PRE_REV3` build of the 3.5�
 
 ## Setting up a new Mac
 
-1. **Homebrew** from [brew.sh](https://brew.sh), then `brew install cmake ninja`. (The studio also installs these if they're missing.)
-2. **Repos** go under `~/GitHub/<account>/`. On the easyuxd machine, account tooling maps folders to GitHub accounts: clone with `gh-clone easyuxd seedsigner-lvgl-screens` (and `seedsigner-touchscreen`, plus `seedsigner-micropython-builder` for firmware work), which also registers each repo with GitButler. Elsewhere, a plain `git clone` of the fork works.
-3. **Design Studio:** double-click `Start Design Studio.command`. The first run downloads the LVGL source and installs Emscripten 3.1.74 to `~/emsdk`. No Docker.
-4. **Firmware work only:** ESP-IDF in `~/esp/esp-idf` (the touchscreen repo's setup guide covers installing it), and esptool as above. The builder's own builds use Docker; a native ESP-IDF path is part of PR 2.
+One-time, in this order. Each step is safe to re-run.
+
+1. **Apple's command-line tools** (gives you `git`): run `xcode-select --install` in Terminal and accept. Skip if `git --version` already works.
+2. **Homebrew** from [brew.sh](https://brew.sh) (follow its "Next steps" to add it to your PATH), then:
+   ```bash
+   brew install cmake ninja
+   ```
+   The studio installs these itself if they're missing, but doing it now surfaces any Homebrew problem early.
+3. **Do not `brew install emscripten`.** Homebrew's Emscripten is a newer, incompatible version (6.x) that this repo is known to break on. The studio installs the right one (3.1.74, the version CI uses) into `~/emsdk` on its first run, and refuses to start if a Homebrew one is in the way (fix: `brew uninstall emscripten`). Don't use Docker either; nothing here needs it.
+4. **Clone the repos** under `~/GitHub/<account>/`:
+   - On a machine with the multi-account tooling: `gh-clone easyuxd seedsigner-lvgl-screens` (and `seedsigner-touchscreen`; `seedsigner-micropython-builder` for firmware work). This also registers each repo with GitButler.
+   - Anywhere else: `git clone https://github.com/easyuxd/seedsigner-lvgl-screens.git`.
+5. **Start the studio:** double-click `Start Design Studio.command` (if macOS blocks it: right-click › Open › Open). The first run takes 5–10 minutes: it downloads the LVGL source and installs Emscripten into `~/emsdk` (about 1 GB). It then builds, opens the browser, and from then on starts in seconds.
+6. **Firmware work only:** ESP-IDF v5.5 in `~/esp/esp-idf` (the seedsigner-touchscreen repo's `docs/02-setup-guide.md` covers installing it), and esptool as described above for the 4.3″.
+
+**Python:** macOS's built-in `python3` is fine for the studio, which uses only the standard library. Write `python3`, never `python`. Homebrew may also install its own `python3` as a dependency of other tools; either works.
+
+**What the setup leaves on the machine:** `~/emsdk` (Emscripten; delete the folder to remove it), Homebrew's `cmake` and `ninja`, and build output inside the repo (`tools/apps/web_runner/build-wasm/` and `site/`, both gitignored).
 
 ## Things that bite
 
