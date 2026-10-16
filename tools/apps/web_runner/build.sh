@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # One-shot WASM build for the SeedSigner web_runner.
 #
-# Builds inside a ccache-enabled Emscripten image (the official emscripten/emsdk
-# extended via tools/apps/web_runner/Dockerfile) — no host Emscripten install
-# required. The repo is bind-mounted; output lands in
-# tools/apps/web_runner/build-wasm/index.html (a single self-contained file).
+# Builds natively when an Emscripten SDK is installed (~/emsdk, or emcc on PATH),
+# otherwise inside a ccache-enabled Emscripten image (the official emscripten/emsdk
+# extended via tools/apps/web_runner/Dockerfile). USE_DOCKER=1 forces Docker.
+# Output lands in tools/apps/web_runner/build-wasm/ (index.html + .js + .wasm).
 #
 # ccache (EM_COMPILER_WRAPPER) and the Emscripten port cache are persisted in
 # tools/apps/web_runner/.ccache and .emcache so repeat builds are fast.
@@ -43,6 +43,23 @@ PY
   node --check /tmp/web_runner_shell_app.js || { echo "ERROR: shell.html script has a syntax error (see above)"; exit 1; }
 fi
 
+# Native Emscripten (no Docker) when an emsdk is installed: the same pinned version CI
+# uses (.github/workflows/pages.yml). studio.sh installs it to ~/emsdk on first run.
+EMSDK_DIR="${EMSDK_DIR:-$HOME/emsdk}"
+if [ "${USE_DOCKER:-0}" != "1" ] && [ -f "$EMSDK_DIR/emsdk_env.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$EMSDK_DIR/emsdk_env.sh" >/dev/null 2>&1
+fi
+if [ "${USE_DOCKER:-0}" != "1" ] && command -v emcc >/dev/null 2>&1; then
+  echo "==> Building web_runner (WASM, native emcc $(emcc --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)) at ${WIDTH}x${HEIGHT}"
+  GEN=""
+  command -v ninja >/dev/null 2>&1 && GEN="-G Ninja"
+  # shellcheck disable=SC2086
+  ( cd "$REPO_ROOT" \
+    && emcmake cmake -S tools/apps/web_runner -B tools/apps/web_runner/build-wasm \
+         -DCMAKE_BUILD_TYPE=Release -DDISPLAY_WIDTH=${WIDTH} -DDISPLAY_HEIGHT=${HEIGHT} $GEN \
+    && cmake --build tools/apps/web_runner/build-wasm -j"$(getconf _NPROCESSORS_ONLN)" )
+else
 echo "==> Ensuring toolchain image ${IMAGE}"
 docker build -t "$IMAGE" --build-arg "EMSDK_TAG=${EMSDK_TAG}" "$SCRIPT_DIR"
 
@@ -65,6 +82,7 @@ docker run --rm \
               -DDISPLAY_WIDTH=${WIDTH} -DDISPLAY_HEIGHT=${HEIGHT} \
             && cmake --build tools/apps/web_runner/build-wasm -j\"\$(nproc)\" \
             && ccache --show-stats | grep -iE 'hits|misses' || true"
+fi
 
 # Stage the runtime assets (scenario catalogs + font packs + locale index) next to the
 # bundle. The packs + localized scenarios must already exist under lang-packs/ +

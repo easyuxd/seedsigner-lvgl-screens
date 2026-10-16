@@ -41,9 +41,17 @@ locale's font pack(s) and hands the bytes to the engine to register over the bak
 baseline. Latin-baseline languages (English, Spanish, German, …) need no pack — the
 compiled-in OpenSans Western floor covers them.
 
+## Design Studio (easyuxd Redesign)
+
+`studio.sh` (or the repo-root `Start Design Studio.command`) builds, serves and live-reloads
+the easyuxd Redesign studio at `/redesign/`, beside the gallery and this runner. It installs
+Emscripten 3.1.74 natively to `~/emsdk` on first run (no Docker). See
+`context/design-studio.md`.
+
 ## Build
 
-Emscripten is provided by a Docker image (the official `emscripten/emsdk`
+`build.sh` builds natively when an Emscripten SDK is installed (`~/emsdk`, or `emcc` on PATH);
+otherwise Emscripten is provided by a Docker image (the official `emscripten/emsdk`
 extended with **ccache** — see `Dockerfile`), so no host toolchain is needed:
 
 ```bash

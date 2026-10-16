@@ -49,6 +49,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dest", required=True, help="build/serve dir to stage assets/ under")
+    ap.add_argument("--available-only", action="store_true",
+                    help="stage only the locales/packs that exist locally instead of failing "
+                         "(local Design Studio use without a language-packs checkout)")
     args = ap.parse_args()
 
     dest = os.path.abspath(args.dest)
@@ -59,7 +62,14 @@ def main():
 
     # Scenario catalogs (raw localized JSON — the page expands variations itself).
     src_scen = os.path.join(REPO_ROOT, "tools/scenarios/localized")
-    for code, _name in LOCALES:
+    locales = LOCALES
+    pack_locales = PACK_LOCALES
+    if args.available_only:
+        locales = [(c, n) for c, n in LOCALES if os.path.exists(os.path.join(src_scen, f"{c}.json"))]
+        pack_locales = [c for c in PACK_LOCALES
+                        if any(c == lc for lc, _ in locales)
+                        and os.path.isdir(os.path.join(REPO_ROOT, "lang-packs", c))]
+    for code, _name in locales:
         src = os.path.join(src_scen, f"{code}.json")
         if not os.path.exists(src):
             sys.exit(f"stage_assets: missing scenario catalog {src}")
@@ -67,7 +77,7 @@ def main():
 
     # Font packs (only the script/CJK locales need one).
     src_packs = os.path.join(REPO_ROOT, "lang-packs")
-    for code in PACK_LOCALES:
+    for code in pack_locales:
         src = os.path.join(src_packs, code)
         if not os.path.isdir(src):
             sys.exit(f"stage_assets: missing font pack {src} "
@@ -87,12 +97,12 @@ def main():
 
     # Locale index the picker is built from.
     with open(os.path.join(scen_dir, "locales.json"), "w", encoding="utf-8") as f:
-        json.dump([{"code": c, "name": n} for c, n in LOCALES], f,
+        json.dump([{"code": c, "name": n} for c, n in locales], f,
                   ensure_ascii=False, indent=2)
         f.write("\n")
 
-    print(f"stage_assets: staged {len(LOCALES)} locales "
-          f"({len(PACK_LOCALES)} with packs) -> {scen_dir} + {packs_dir}")
+    print(f"stage_assets: staged {len(locales)} locales "
+          f"({len(pack_locales)} with packs) -> {scen_dir} + {packs_dir}")
 
 
 if __name__ == "__main__":
