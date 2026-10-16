@@ -17,6 +17,7 @@ What it does:
 Standard library only.
 """
 import argparse
+import fcntl
 import http.server
 import json
 import os
@@ -241,6 +242,20 @@ def main():
     ap.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = ap.parse_args()
 
+    # One studio per checkout: a second launch (say, a double double-click) opens the
+    # running one instead of starting a server that would race it in build-wasm/.
+    os.makedirs(BUILD, exist_ok=True)
+    lock = open(os.path.join(BUILD, ".studio.lock"), "a+")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock.seek(0)
+        url = lock.read().strip() or f"http://localhost:{args.port}/redesign/"
+        print(f"The Design Studio is already running: {url}")
+        if not args.no_open:
+            webbrowser.open(url)
+        return
+
     if not shutil.which("emcc"):
         sys.exit("Emscripten (emcc) is not on PATH. Start the studio with "
                  "'Start Design Studio.command' (or tools/apps/web_runner/studio.sh).")
@@ -256,6 +271,10 @@ def main():
     server = Server(("127.0.0.1", port), Handler)
     threading.Thread(target=watch, daemon=True).start()
     url = f"http://localhost:{port}/redesign/"
+    lock.seek(0)
+    lock.truncate()
+    lock.write(url)
+    lock.flush()
     print()
     print("  SeedSigner Design Studio is running:")
     print(f"    {url}")
