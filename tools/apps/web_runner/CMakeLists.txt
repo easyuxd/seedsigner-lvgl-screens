@@ -218,6 +218,7 @@ target_include_directories(web_runner PRIVATE
   "${LVGL_ROOT}"
   "${SEEDSIGNER_DIR}"
   "${COMMON_DIR}"
+  "${REDESIGN_GENERATED_DIR}"
   "${NLOHMANN_JSON_INCLUDE_DIR}")
 
 # Emscripten: use the bundled SDL2 port for the canvas + input, enable C++

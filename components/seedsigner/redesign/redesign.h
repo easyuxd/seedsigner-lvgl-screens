@@ -20,6 +20,10 @@ extern "C" {
 int redesign_load_tokens(const char* json);
 int redesign_load_prototype(const char* json);
 
+// Load the compiled-in tokens.json + prototype.json and show the start screen
+// (device firmware). Returns 0 if either fails to parse.
+int redesign_start_embedded(void);
+
 // Show a screen, setting the back stack from a path: "settings" or
 // "home/settings/kb_style" (Back walks that path). "" = the prototype's start.
 int redesign_show(const char* path);

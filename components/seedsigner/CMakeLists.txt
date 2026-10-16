@@ -105,6 +105,11 @@ list(APPEND srcs
 include("${CMAKE_CURRENT_LIST_DIR}/screen_sources.cmake")
 list(APPEND srcs ${SEEDSIGNER_SCREEN_SOURCES})
 
+# easyuxd Redesign (additive): components, prototype runtime, baked fonts and the
+# compiled-in tokens/prototype JSON. See context/architecture.md.
+include("${CMAKE_CURRENT_LIST_DIR}/redesign/redesign_sources.cmake")
+list(APPEND srcs ${REDESIGN_SOURCES})
+
 
 idf_component_register(
     SRCS ${srcs}
@@ -115,3 +120,6 @@ idf_component_register(
 target_compile_options(${COMPONENT_LIB} PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-fexceptions>
 )
+
+# The generated JSON includes are private to this component (rd_embedded.cpp).
+target_include_directories(${COMPONENT_LIB} PRIVATE "${REDESIGN_GENERATED_DIR}")
