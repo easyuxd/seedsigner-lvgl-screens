@@ -22,7 +22,7 @@ prototype.json ─► rd_prototype.cpp  shells (the six screen types), navigatio
                   rd_ui.cpp       components (navbar, list_item, tile, …), snackbar,
                                   press feedback, inspector tags
                        │
-                  LVGL 9.5  ──►  browser (web_runner, WASM)   ·   device (PR 2)
+                  LVGL 9.5  ──►  browser (web_runner, WASM)   ·   device (firmware)
 ```
 
 Everything lives in `components/seedsigner/redesign/` and is additive: Classic code doesn't call it, and it touches no Classic state. It shares only the engine (LVGL, the display/input plumbing in `tools/apps/runner_core`, and the Open Sans font data).
@@ -85,4 +85,4 @@ A new screen type means changing the shells in `rd_prototype.cpp` *and* the resp
 
 - **Browser:** `tools/apps/web_runner/web_runner.cpp` exports `ss_rd_*` wrappers. `redesign/device.html` runs one engine per screen size and talks to the studio page (`redesign/index.html`) over `postMessage`. Redesign sizes are portrait canvases keyed to the matching *landscape* Classic profile (320×480 → 480×320, 480×800 → 800×480) via `runner_core::resize_oriented`, so Classic's profile table needs no portrait entries.
 - **Server:** `studio.py` builds with `cmake --build` (incremental), assembles the same site layout as CI (`scripts/ci/ci.sh assemble-site`), serves `redesign/data/*.json` live from the source folder, and pushes Server-Sent Events (`/events`) for live reload.
-- **Device:** not yet. PR 2 adds the Redesign sources to the ESP-IDF component, a MicroPython binding in the builder, and a boot choice between Classic and Redesign ([backlog.md](backlog.md)). The C API was shaped for that: JSON in, `redesign_show()`, a listener for navigation.
+- **Device:** `components/seedsigner/CMakeLists.txt` builds the Redesign into the ESP-IDF component, and `redesign_sources.cmake` compiles `tokens.json` + `prototype.json` in (`rd_embedded.cpp` → `redesign_start_embedded()`). In the builder fork, `display_manager` reads NVS `seedsigner`/`ui` at power-on (1 = Redesign, portrait; otherwise Classic, landscape), the binding `redesign_start()` shows it, and the launcher runs it. A JSON edit therefore needs a firmware rebuild to reach a board; a live push over USB is in the backlog.

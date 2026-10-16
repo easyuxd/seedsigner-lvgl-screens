@@ -38,9 +38,9 @@ prototype.json ┘     │
 The **same engine** runs in two places:
 
 - **In the browser.** The Design Studio runs the engine compiled to WebAssembly, once per previewed device, so you can compare boards side by side. It's the real LVGL renderer, not an imitation; what you see is what the board draws.
-- **On a board.** The same C code is compiled into the firmware (from PR 2; see [devices.md](devices.md)).
+- **On a board.** The same C code is compiled into the firmware by the easyuxd builder fork, with `tokens.json` and `prototype.json` built in ([devices.md](devices.md)).
 
-That's why there's no "export to device" step for a design: the browser and the board run the same code and the same JSON.
+So there's no separate "export to device" step: the browser and the board run the same code and the same JSON. Getting a change onto a board means rebuilding and reflashing the firmware (a few minutes; [devices.md](devices.md)). Iterate in the browser, and flash when you want to feel it in the hand.
 
 ## What happens when you save
 

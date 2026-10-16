@@ -11,13 +11,14 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
 
 ## Now → next
 
-1. **PR 2: device lane** (needs an easyuxd fork of `seedsigner-micropython-builder`).
+1. **PR 2: device lane.** Code done and built ([easyuxd/seedsigner-micropython-builder#1](https://github.com/easyuxd/seedsigner-micropython-builder/pull/1)); still to do: verify on the 4.3″ (orientation, touch, switching, Classic unchanged). The original plan:
    - Add `redesign_sources.cmake` and `tokens.json` / `prototype.json` (baked in) to the ESP-IDF component in `components/seedsigner/CMakeLists.txt`.
    - Add a MicroPython binding (`redesign_start()` + events) in the builder's `bindings/`.
    - Add a boot choice: **Classic wallet** or **Redesign prototype**.
    - Portrait display orientation for the 4.3″ (480×800) and 3.5″ (320×480) when the Redesign runs.
    - A native (no-Docker) firmware build using `~/esp/esp-idf`, with the version matched to the builder's pin.
-   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″).
+   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). *Not built yet: do it once flashing is verified by hand.*
+   - Push `tokens.json` / `prototype.json` to a board over USB without a rebuild, the device-side twin of the studio's hot reload.
    - Update [devices.md](devices.md).
 2. **Test the foundation screens on the 4.3″**, then **flash the 3.5″** (retiring its mirror) and test both.
 3. **Port the PSBT signing flow**, with `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([screen-coverage.md](screen-coverage.md)).

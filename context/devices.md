@@ -26,7 +26,7 @@ Both connect over USB-C. A **data** cable is required; a charge-only cable power
 ## Plan for the boards
 
 1. **Now (PR 1):** design in the Design Studio. The browser is the source of truth while iterating.
-2. **PR 2:** build firmware that includes the Redesign and can boot either Classic or the Redesign prototype, then test the foundation screens on the **4.3″**.
+2. **PR 2** ([easyuxd/seedsigner-micropython-builder#1](https://github.com/easyuxd/seedsigner-micropython-builder/pull/1)): one firmware that boots either Classic or the Redesign prototype. Built and verified on macOS. Next: flash the **4.3″** and test the foundation screens.
 3. **Then:** flash the **3.5″** with the same design (PRE_REV3 image), retiring its mirror firmware, and test both boards side by side.
 
 Until step 3 the 3.5″ keeps the mirror, so the HTML prototype can still be shown on hardware.
@@ -41,7 +41,30 @@ Follow [seedsigner-micropython-builder › Flash a prebuilt image](https://githu
 4. Check the chip: `esptool -p <port> chip-id` must say revision v3.x for this image.
 5. Flash from the unzipped folder: `esptool --chip esp32p4 -p <port> write-flash @flash_args` (about 4 minutes).
 
-This image shows **Classic** only. Redesign firmware comes with PR 2, and this section will gain a "Flash Device.command" step then.
+This prebuilt image shows **Classic** only. For the Redesign, use the easyuxd build below.
+
+## Building and flashing the Redesign firmware (easyuxd builder fork)
+
+In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-build.md`):
+
+1. **One-time:** ESP-IDF v5.5.5 in its own folder (your other ESP-IDF stays untouched):
+   ```bash
+   git clone -b v5.5.5 --depth 1 --recursive --shallow-submodules https://github.com/espressif/esp-idf.git ~/esp/esp-idf-v5.5.5
+   IDF_TOOLS_PATH=~/.espressif ~/esp/esp-idf-v5.5.5/install.sh esp32p4
+   ```
+2. **Build** (no Docker; fetches its own submodules; first build ~10 min):
+   ```bash
+   scripts/native_build.sh                                                                     # 4.3″
+   BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3 scripts/native_build.sh # 3.5″
+   ```
+3. **Flash** (with the owner's OK): `cd dist/<BOARD>` then `esptool --chip esp32p4 -p <port> write-flash @flash_args` (steps 1–4 of the prebuilt section above cover esptool and the port).
+4. **Choose the UI** (no reflash; the board restarts):
+   ```bash
+   source ~/esptool-venv/bin/activate
+   python3 tools/set_ui.py redesign      # or: classic, status
+   ```
+
+The Redesign's tokens and screens are compiled into the image, so after editing `tokens.json` or `prototype.json` in the Design Studio, rebuild (step 2) and reflash (step 3) to see them on a board.
 
 ## 3.5″: the mirror (until it's switched over)
 

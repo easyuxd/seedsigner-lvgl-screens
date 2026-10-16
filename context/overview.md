@@ -44,7 +44,7 @@ Full detail: [design-studio.md](design-studio.md).
 - **Emscripten 3.1.74** compiles the engine to WebAssembly for the browser. It's installed natively in `~/emsdk`, with no Docker.
 - **nlohmann/json** parses tokens and prototype JSON (vendored in `components/nlohmann_json`).
 - **Python 3** (standard library only) runs the studio server.
-- Device firmware is built by [seedsigner-micropython-builder](https://github.com/kdmukai/seedsigner-micropython-builder), which consumes this repo as a submodule. Redesign isn't in device builds yet; that's PR 2 ([backlog.md](backlog.md)).
+- Device firmware is built by the easyuxd fork of [seedsigner-micropython-builder](https://github.com/easyuxd/seedsigner-micropython-builder), which consumes this repo as a submodule. One image holds both UIs; a saved setting picks Classic or Redesign at boot ([devices.md](devices.md)).
 
 ## Conventions that aren't visible from the code
 
