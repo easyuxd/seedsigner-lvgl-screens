@@ -16,17 +16,17 @@ How to reproduce this whole setup on another Mac, for another person, and how ea
 |---|---|---|
 | Panel | 480×800, MIPI-DSI | 320×480 |
 | Redesign scale | 1 pt = 1.5 px | 1 pt = 1 px |
-| Runs today | SeedSigner firmware (Classic UI) from seedsigner-micropython-builder | The HTML-prototype **mirror** from seedsigner-touchscreen |
+| Runs today | easyuxd builder firmware: **Redesign** selected (switch with `set_ui.py`) | The HTML-prototype **mirror** from seedsigner-touchscreen |
 | Chip revision | v3.x (current boards; the standard image flashed) | **v1.3** (older silicon) |
 | Builder board name | `WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43` | `WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35` |
 | Image variant | default | **`BOARD_VARIANT=PRE_REV3`** (v1.x chips can't run the default image) |
 
-Both connect over USB-C. A **data** cable is required; a charge-only cable powers the board, but no port appears.
+Both connect over USB-C. A **data** cable is required; a charge-only cable powers the board, but no port appears. Each board has **two USB-C ports**: **flash through the one labeled UART** (USB-serial chip `1a86:55d3`). The other is the P4's native USB (`303a:4001`): esptool can't reach the chip through it while firmware runs, but `set_ui.py` works on either.
 
 ## Plan for the boards
 
 1. **Now (PR 1):** design in the Design Studio. The browser is the source of truth while iterating.
-2. **PR 2** ([easyuxd/seedsigner-micropython-builder#1](https://github.com/easyuxd/seedsigner-micropython-builder/pull/1)): one firmware that boots either Classic or the Redesign prototype. Built and verified on macOS. Next: flash the **4.3″** and test the foundation screens.
+2. **PR 2** ([easyuxd/seedsigner-micropython-builder#1](https://github.com/easyuxd/seedsigner-micropython-builder/pull/1)): one firmware that boots either Classic or the Redesign prototype. Built and verified on macOS. **Verified on the 4.3″** (2026-10-16): Redesign in portrait with correct orientation and touch, Classic unchanged, switching both ways.
 3. **Then:** flash the **3.5″** with the same design (PRE_REV3 image), retiring its mirror firmware, and test both boards side by side.
 
 Until step 3 the 3.5″ keeps the mirror, so the HTML prototype can still be shown on hardware.

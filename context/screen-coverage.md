@@ -12,7 +12,7 @@ The goal is **every screen in `seedsigner-touchscreen/prototype/` ported**. The 
 
 Legend: ✅ ported · ⏳ next · ☐ not started
 
-## Ported (PR 1: foundation)
+## Ported (PR 1: foundation, verified in the browser and on the 4.3″)
 
 | Prototype route | Redesign id | Type | Notes |
 |---|---|---|---|
