@@ -172,6 +172,10 @@ set(RUNNER_COMMON_SOURCES
 
 # Screen entry-point TUs from the single shared glob (screen_sources.cmake).
 include("${SEEDSIGNER_DIR}/screen_sources.cmake")
+# easyuxd Redesign (additive): components, prototype runtime and baked fonts.
+include("${SEEDSIGNER_DIR}/redesign/redesign_sources.cmake")
+# easyuxd Redesign (additive): its components, prototype runtime and baked fonts.
+include("${SEEDSIGNER_DIR}/redesign/redesign_sources.cmake")
 
 add_executable(web_runner
   ${LVGL_SOURCES}
@@ -179,6 +183,7 @@ add_executable(web_runner
   ${SEEDSIGNER_IMAGE_SOURCES}
   ${SEEDSIGNER_CORE_SOURCES}
   ${SEEDSIGNER_SCREEN_SOURCES}
+  ${REDESIGN_SOURCES}
   ${RUNNER_COMMON_SOURCES}
   "${CMAKE_CURRENT_LIST_DIR}/web_runner.cpp")
 
@@ -238,7 +243,7 @@ target_link_options(web_runner PRIVATE
   -fexceptions
   -O2
   "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','HEAPU8']"
-  "-sEXPORTED_FUNCTIONS=['_main','_ss_load_screen','_ss_set_resolution','_ss_set_present_rotation','_ss_set_input_mode','_ss_set_static_render','_ss_send_key','_ss_scroll','_ss_get_width','_ss_get_height','_ss_get_framebuffer','_ss_render_now','_ss_register_manifest','_ss_pack_files','_ss_stage_blob','_ss_stage_endonym','_ss_load_staged','_ss_reload','_malloc','_free']"
+  "-sEXPORTED_FUNCTIONS=['_main','_ss_load_screen','_ss_set_resolution','_ss_set_present_rotation','_ss_set_input_mode','_ss_set_static_render','_ss_send_key','_ss_scroll','_ss_get_width','_ss_get_height','_ss_get_framebuffer','_ss_render_now','_ss_register_manifest','_ss_pack_files','_ss_stage_blob','_ss_stage_endonym','_ss_load_staged','_ss_reload','_ss_rd_start','_ss_rd_set_size','_ss_rd_load_tokens','_ss_rd_load_prototype','_ss_rd_show','_ss_rd_refresh','_ss_rd_status','_ss_rd_screen_list','_ss_rd_current','_ss_rd_inspect','_malloc','_free']"
   "--shell-file" "${CMAKE_CURRENT_LIST_DIR}/shell.html")
 
 # Force a relink when the shell changes.
