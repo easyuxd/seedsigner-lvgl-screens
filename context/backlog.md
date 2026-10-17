@@ -21,12 +21,9 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
    - Push `tokens.json` / `prototype.json` to a board over USB without a rebuild, the device-side twin of the studio's hot reload.
    - Update [devices.md](devices.md).
 2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.
-3. **Port the PSBT signing flow**, with `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([screen-coverage.md](screen-coverage.md)).
-4. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
-
-## Press states ✅
-
-Done 2026-10-17: **option A · Quiet**, chosen from three in `explorations/press-states-lab.html`. Color is instant on touch-down; scale 0.97 eases in over 30 ms and back over 140 ms; every tap holds its press at least 80 ms from touch-down; `surfacePress` `#393939`, `activePress` `#EB9209`; the selected `choice_list` option presses to `activePress`; transparent controls no longer flash white. Rules: [design-system.md](design-system.md) §6 and §10; why: [decisions.md](decisions.md) › Press states.
+3. ✅ **Press states** ([easyuxd/seedsigner-lvgl-screens#3](https://github.com/easyuxd/seedsigner-lvgl-screens/pull/3); firmware bump in [easyuxd/seedsigner-micropython-builder#3](https://github.com/easyuxd/seedsigner-micropython-builder/pull/3)), 2026-10-17, **verified on both boards**: option A · Quiet, chosen from three in `explorations/press-states-lab.html`. Color is instant on touch-down; scale 0.97 eases in over 30 ms and back over 140 ms; every tap holds its press at least 80 ms from touch-down; `surfacePress` `#393939`, `activePress` `#EB9209`; the selected `choice_list` option presses to `activePress`; transparent controls no longer flash white. Rules: [design-system.md](design-system.md) §6 and §10; why: [decisions.md](decisions.md) › Press states. The same builder PR fixes `Flash Device.command` stopping with `port?: unbound variable` when double-clicked.
+4. **Port the PSBT signing flow** (next) from `seedsigner-touchscreen/prototype/psbt.jsx`: new components `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([design-system.md](design-system.md) §12), plus the first `review` and `dialog` screens, styled from `tokens.json` and defined in `prototype.json`. Verify both sizes in the studio, then on both boards; keep [screen-coverage.md](screen-coverage.md) current.
+5. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
 
 ## Design-system gaps (port with the first screen that needs them)
 
