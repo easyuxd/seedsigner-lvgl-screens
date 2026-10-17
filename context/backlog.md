@@ -24,15 +24,9 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
 3. **Port the PSBT signing flow**, with `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([screen-coverage.md](screen-coverage.md)).
 4. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
 
-## Press states (next, its own PR)
+## Press states ✅
 
-**Every button needs a press you can see, and the same one everywhere.** On the boards, the large tiles and list rows feel like they have no press state (designer's report, 2026-10-17). Every component already goes through `pressable()` in `rd_ui.cpp`, so the problem is how it behaves, not missing code:
-
-- Color and scale both ease in over 160 ms (`motion.press.ms`), and a tap navigates as soon as the finger lifts, so a quick tap changes screen before the press has visibly appeared. Large surfaces show it least.
-- The selected `choice_list` option presses to `active` (its rest color), so it only scales.
-- Transparent-at-rest controls (navbar buttons, `section_head` action, `add_row`) animate their color from LVGL's default white, so they can flash light.
-
-**Proposed fix (option "B · Snappy", shown to the designer as an interactive mock; not yet confirmed):** the press color appears instantly (only scale is animated, ~100 ms); scale 0.95; `surfacePress` one step lighter (`#454545`); every tap holds its pressed look for at least ~120 ms before the screen changes (new `motion.press.minMs`); the selected option presses to `activePress`. All values are tokens. Update design-system.md §6 and §10, log it in decisions.md, and confirm on both boards.
+Done 2026-10-17: **option A · Quiet**, chosen from three in `explorations/press-states-lab.html`. Color is instant on touch-down; scale 0.97 eases in over 30 ms and back over 140 ms; every tap holds its press at least 80 ms from touch-down; `surfacePress` `#393939`, `activePress` `#EB9209`; the selected `choice_list` option presses to `activePress`; transparent controls no longer flash white. Rules: [design-system.md](design-system.md) §6 and §10; why: [decisions.md](decisions.md) › Press states.
 
 ## Design-system gaps (port with the first screen that needs them)
 
