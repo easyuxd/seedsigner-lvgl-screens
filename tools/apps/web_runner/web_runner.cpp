@@ -24,6 +24,7 @@
 #include "locale_loader.h"
 #include "locale_picker.h"   // locale_picker_set_image_provider (endonym images)
 
+#include "redesign/redesign.h"
 #include "runner_core.h"
 #include "runner_sdl.h"
 
@@ -372,6 +373,50 @@ EMSCRIPTEN_KEEPALIVE int ss_reload(const char* json) {
     if (g_cur_screen.empty()) return 0;
     return ss_load_screen(g_cur_screen.c_str(), json);
 }
+
+// ---------------------------------------------------------------------------
+// easyuxd Redesign (the Design Studio page, redesign.html). Additive: Classic
+// exports above are unchanged. See components/seedsigner/redesign/redesign.h.
+// ---------------------------------------------------------------------------
+
+static void redesign_forward(const char* event, const char* detail) {
+    EM_ASM({ if (window.rdOnEvent) window.rdOnEvent(UTF8ToString($0), UTF8ToString($1)); },
+           event, detail ? detail : "");
+}
+
+// Redesign is touch-only; screen results go to window.rdOnEvent.
+EMSCRIPTEN_KEEPALIVE void ss_rd_start() {
+    input_profile_set_mode(INPUT_MODE_TOUCH);
+    redesign_set_listener(redesign_forward);
+}
+
+// Portrait canvas w x h. The Classic profile key is the landscape panel of the
+// same size (320x480 -> 480x320, 480x800 -> 800x480), which is what the physical
+// boards are; Redesign itself scales from its own tokens, not the profile.
+EMSCRIPTEN_KEEPALIVE void ss_rd_set_size(int w, int h) {
+    g_land_w = w;
+    g_land_h = h;
+    g_present_rotate = false;
+    runner_core::resize_oriented(w, h, h, w);
+    create_sdl_surface(w, h, w, h);
+}
+
+EMSCRIPTEN_KEEPALIVE int ss_rd_load_tokens(const char* json) { return redesign_load_tokens(json); }
+EMSCRIPTEN_KEEPALIVE int ss_rd_load_prototype(const char* json) { return redesign_load_prototype(json); }
+EMSCRIPTEN_KEEPALIVE int ss_rd_show(const char* id) {
+    int ok = redesign_show(id);
+    runner_core::tick(0);
+    return ok;
+}
+EMSCRIPTEN_KEEPALIVE int ss_rd_refresh() {
+    int ok = redesign_refresh();
+    runner_core::tick(0);
+    return ok;
+}
+EMSCRIPTEN_KEEPALIVE const char* ss_rd_status() { return redesign_status(); }
+EMSCRIPTEN_KEEPALIVE const char* ss_rd_screen_list() { return redesign_screen_list(); }
+EMSCRIPTEN_KEEPALIVE const char* ss_rd_current() { return redesign_current_path(); }
+EMSCRIPTEN_KEEPALIVE const char* ss_rd_inspect(int x, int y) { return redesign_inspect(x, y); }
 
 }  // extern "C"
 

@@ -1,0 +1,136 @@
+{
+  "_about": "Redesign clickable prototype: every screen, built from components, and where each tap goes. Ported from seedsigner-touchscreen/prototype/screens.jsx. Schema and rules: context/architecture.md. Keys starting with _ are notes.",
+
+  "start": "home",
+
+  "state": {
+    "kb_style": "Default",
+    "persistent": true
+  },
+
+  "screens": {
+    "home": {
+      "type": "menu_grid",
+      "_note": "Home, 'Scan hero' direction: seeds on top, Scan promoted to the thumb zone at the bottom.",
+      "navbar": { "title": "Home", "left": "power" },
+      "body": [
+        { "type": "group", "children": [
+          { "type": "section_head", "label": "Seeds", "right": "All 5", "go": "seeds" },
+          { "type": "seed_row", "fp": "73c5da0a", "go": "seed" },
+          { "type": "seed_row", "fp": "8a1f0c2b", "go": "seed" },
+          { "type": "seed_row", "fp": "d5630e9f", "go": "seed" }
+        ]}
+      ],
+      "actions": [
+        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80,
+          "snack": { "type": "info", "label": "Scan QR", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "row", "children": [
+          { "type": "tile", "icon": "tools", "label": "Tools", "h": 80, "go": "tools" },
+          { "type": "tile", "icon": "settings", "label": "Settings", "h": 80, "go": "settings" }
+        ]}
+      ]
+    },
+
+    "seeds": {
+      "type": "menu_list",
+      "navbar": { "title": "Seeds", "left": "back" },
+      "body": [
+        { "type": "group", "children": [
+          { "type": "seed_row", "fp": "73c5da0a", "sub": "Single sig · Native segwit", "go": "seed" },
+          { "type": "seed_row", "fp": "8a1f0c2b", "sub": "Single sig · + passphrase", "go": "seed" },
+          { "type": "seed_row", "fp": "d5630e9f", "sub": "Multisig · 2-of-3", "go": "seed" },
+          { "type": "seed_row", "fp": "2f9c41ab", "sub": "Single sig · Taproot", "go": "seed" },
+          { "type": "seed_row", "fp": "0b7e5d63", "sub": "Single sig · Nested segwit", "go": "seed" }
+        ]}
+      ],
+      "actions": [
+        { "type": "add_row", "label": "Load or create seed", "go": "add_seed" }
+      ]
+    },
+
+    "seed": {
+      "type": "menu_list",
+      "_note": "Seed detail (object, then its actions). Every seed row opens this one demo seed.",
+      "navbar": { "title": "73c5da0a", "left": "back" },
+      "body": [
+        { "type": "seed_header", "fp": "73c5da0a", "sub": "Single sig · Native segwit" },
+        { "type": "group", "children": [
+          { "type": "list_item", "icon": "sign", "label": "Sign PSBT",
+            "snack": { "type": "info", "label": "Sign PSBT", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "derivation", "label": "Export Xpub",
+            "snack": { "type": "info", "label": "Export Xpub", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "check", "label": "Address Explorer", "muted": true },
+          { "type": "list_item", "icon": "seeds", "label": "Backup Seed",
+            "snack": { "type": "info", "label": "Backup Seed", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "passphrase", "label": "Add passphrase",
+            "snack": { "type": "info", "label": "Add passphrase", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "derivation", "label": "BIP-85 child seed",
+            "snack": { "type": "info", "label": "BIP-85 child seed", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "error", "icon_color": "dire", "label": "Discard seed", "chevron": false,
+            "snack": { "type": "info", "label": "Discard seed", "sublabel": "Not ported to LVGL yet" } }
+        ]}
+      ]
+    },
+
+    "add_seed": {
+      "type": "menu_list",
+      "navbar": { "title": "Add Seed", "left": "back" },
+      "body": [
+        { "type": "section_head", "label": "Load an existing seed" },
+        { "type": "list_item", "icon": "qrcode", "label": "Scan a SeedQR", "value": "Fastest",
+          "snack": { "type": "info", "label": "Scan a SeedQR", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "list_item", "icon": "seeds", "label": "Enter seed words",
+          "snack": { "type": "info", "label": "Enter seed words", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "list_item", "icon": "microsd", "label": "Restore from microSD", "muted": true },
+        { "type": "spacer", "h": 6 },
+        { "type": "section_head", "label": "Or start fresh" },
+        { "type": "list_item", "icon": "plus", "label": "Create a new seed",
+          "snack": { "type": "info", "label": "Create a new seed", "sublabel": "Not ported to LVGL yet" } }
+      ]
+    },
+
+    "tools": {
+      "type": "menu_list",
+      "navbar": { "title": "Tools", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "derivation", "label": "Address explorer", "muted": true },
+        { "type": "list_item", "icon": "check", "label": "Verify address", "muted": true },
+        { "type": "list_item", "icon": "seeds", "label": "Seed word calculator", "muted": true },
+        { "type": "list_item", "icon": "bitcoin", "label": "Sats / fiat converter", "muted": true },
+        { "type": "list_item", "icon": "qrcode", "label": "Create a SeedQR", "muted": true }
+      ]
+    },
+
+    "settings": {
+      "type": "menu_list",
+      "navbar": { "title": "Settings", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "space", "label": "Keyboard", "value": "{kb_style}", "go": "kb_style" },
+        { "type": "list_item", "icon": "info", "label": "Language", "value": "English" },
+        { "type": "list_item", "icon": "bitcoin", "label": "Network", "value": "Mainnet" },
+        { "type": "list_item", "icon": "qrcode", "label": "QR density", "value": "High" },
+        { "type": "list_item", "icon": "scan", "label": "Display & camera" },
+        { "type": "list_item", "icon": "microsd", "label": "microSD" },
+        { "type": "toggle_row", "icon": "restart", "label": "Persistent settings", "state": "persistent" },
+        { "type": "list_item", "icon": "info", "label": "About" }
+      ]
+    },
+
+    "kb_style": {
+      "type": "menu_bottom_list",
+      "navbar": { "title": "Keyboard", "left": "back" },
+      "body": [
+        { "type": "choice_list", "choice": "kb_style", "options": [
+          { "label": "Default", "blurb": "iOS layout · 27 × 42 px keys" },
+          { "label": "Ladder", "blurb": "Five columns · 60 × 34 px keys" },
+          { "label": "Halo", "blurb": "iOS layout · hit zones 76% bigger" },
+          { "label": "Loupe", "blurb": "Preview, slide, release to type" }
+        ]}
+      ],
+      "actions": [
+        { "type": "cta", "label": "Try it",
+          "snack": { "type": "info", "label": "Try it", "sublabel": "Passphrase entry is not ported to LVGL yet" } }
+      ]
+    }
+  }
+}

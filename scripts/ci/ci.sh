@@ -254,7 +254,16 @@ PY
     cp "$BUILD/index.wasm" "$SITE_DIR/runner/"
     cp -r "$BUILD/assets"  "$SITE_DIR/runner/"
 
-    echo "Assembled site at $SITE_DIR (gallery at /, runner at /runner/)"
+    # /redesign/ — the easyuxd Design Studio (Redesign prototype) + engine + its data.
+    # Locally, the Design Studio server serves data/ live from the source folder instead.
+    mkdir -p "$SITE_DIR/redesign/data"
+    cp tools/apps/web_runner/redesign/*.html "$SITE_DIR/redesign/"
+    cp "$BUILD/index.js"   "$SITE_DIR/redesign/"
+    cp "$BUILD/index.wasm" "$SITE_DIR/redesign/"
+    cp components/seedsigner/redesign/tokens.json components/seedsigner/redesign/prototype.json \
+       "$SITE_DIR/redesign/data/"
+
+    echo "Assembled site at $SITE_DIR (gallery at /, runner at /runner/, studio at /redesign/)"
     ;;
 
   screenshot-diff-summary)

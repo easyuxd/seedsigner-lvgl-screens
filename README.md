@@ -2,6 +2,18 @@
 
 Platform-agnostic LVGL screen implementations for [SeedSigner](https://github.com/SeedSigner/seedsigner), the air-gapped Bitcoin signing device. This repo contains the shared rendering layer that runs on both the Raspberry Pi Zero (via CPython extension) and ESP32-S3 microcontrollers (via MicroPython firmware).
 
+## easyuxd fork: Classic + Redesign
+
+This fork adds **Redesign**, easyuxd's portrait, touch-first SeedSigner design, as a clickable prototype running on the same LVGL engine as upstream's screens (**Classic**, unchanged). One responsive design covers the 3.5″ (320×480) and 4.3″ (480×800) ESP32-P4 boards.
+
+- **How it works (start here):** [context/README.md](context/README.md). Screens are JSON, components are C, and the browser runs the real engine.
+- **Designers:** double-click **`Start Design Studio.command`** to see every Redesign screen at both sizes in the browser, with live reload and an inspector. No Docker needed. Guide: [context/design-studio.md](context/design-studio.md).
+- **Design rules:** [context/design-system.md](context/design-system.md).
+- **Agents and contributors:** start at [AGENTS.md](AGENTS.md), which routes to the rest of [`context/`](context/).
+- **Hardware and new-machine setup:** [context/devices.md](context/devices.md).
+
+The rest of this README describes upstream's Classic screens and tooling.
+
 ## Role in the SeedSigner Ecosystem
 
 SeedSigner is evolving from a Pi Zero-only Python application into a dual-platform system. The same Python business logic and the same LVGL screens run on both hardware targets. This repo is the shared piece in the middle:
