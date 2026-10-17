@@ -17,7 +17,7 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
    - Add a boot choice: **Classic wallet** or **Redesign prototype**.
    - Portrait display orientation for the 4.3″ (480×800) and 3.5″ (320×480) when the Redesign runs.
    - A native (no-Docker) firmware build using `~/esp/esp-idf`, with the version matched to the builder's pin.
-   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). *Not built yet: do it once flashing is verified by hand.*
+   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). ✅ [easyuxd/seedsigner-micropython-builder#2](https://github.com/easyuxd/seedsigner-micropython-builder/pull/2), verified on the 3.5″ (2026-10-17).
    - Push `tokens.json` / `prototype.json` to a board over USB without a rebuild, the device-side twin of the studio's hot reload.
    - Update [devices.md](devices.md).
 2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.

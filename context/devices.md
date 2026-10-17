@@ -43,7 +43,10 @@ This prebuilt image shows **Classic** only. For the Redesign, use the easyuxd bu
 
 ## Building and flashing the Redesign firmware (easyuxd builder fork)
 
-In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-build.md`):
+In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-build.md`).
+
+**The easy way:** plug the board in by its UART port and double-click **`Flash Device.command`** in that folder ([easyuxd/seedsigner-micropython-builder#2](https://github.com/easyuxd/seedsigner-micropython-builder/pull/2)). It checks the chip, picks the right image (PRE_REV3 for chip v1.x), builds it if needed, asks before flashing, then asks Classic or Redesign. The manual steps:
+
 
 1. **One-time:** ESP-IDF v5.5.5 in its own folder (your other ESP-IDF stays untouched):
    ```bash
