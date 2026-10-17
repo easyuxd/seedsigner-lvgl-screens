@@ -1,6 +1,6 @@
 ---
 load_when: "what's planned or deferred"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - context/backlog.md
 ---
@@ -20,7 +20,7 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
    - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). *Not built yet: do it once flashing is verified by hand.*
    - Push `tokens.json` / `prototype.json` to a board over USB without a rebuild, the device-side twin of the studio's hot reload.
    - Update [devices.md](devices.md).
-2. **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`, retiring its mirror) and test the foundation screens on both boards side by side. (The 4.3″ is done.)
+2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.
 3. **Port the PSBT signing flow**, with `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([screen-coverage.md](screen-coverage.md)).
 4. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
 

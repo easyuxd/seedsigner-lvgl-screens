@@ -21,7 +21,7 @@ The studio prints its URL (default `http://localhost:8000/redesign/`, next free 
 - **Redesign styling comes only from `tokens.json`.** No raw pixel values or hex colors in `components/seedsigner/redesign/*.cpp`; add a token instead. Sizes are points and go through `rd::pt()` / the token lookups.
 - **Every screen is one of the six screen types** (`menu_grid`, `menu_list`, `menu_bottom_list`, `input`, `review`, `dialog`). The type decides where spare height goes. Don't hand-place a screen's layout.
 - **Design rules are law.** Visual/interaction changes are checked against `context/design-system.md` and update it in the same commit; log the decision in `context/decisions.md`.
-- **Never flash a device without the user's OK.** Devices are shared hardware and the 3.5″ still runs the HTML-prototype mirror.
+- **Never flash a device without the user's OK.** Devices are shared hardware; both boards run the easyuxd builder firmware ([context/devices.md](context/devices.md)).
 - **Generated files:** `components/seedsigner/redesign/fonts/rd_*.c` come from `scripts/redesign/build_fonts.py`. Regenerate; don't hand-edit.
 - **Git:** this machine maps accounts by folder. Commit with GitButler (`but`), never `git commit`; follow `~/GitHub/AGENTS.md` if present.
 

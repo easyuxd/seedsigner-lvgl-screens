@@ -1,6 +1,6 @@
 ---
 load_when: "why something is the way it is"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - context/decisions.md
 ---
@@ -35,3 +35,4 @@ Newest last. Earlier HTML-prototype decisions (live mirror, keyboard styles, des
 | Homebrew Emscripten | `studio.sh` refuses to start if the `emcc` on PATH isn't the pinned `~/emsdk` one | A new machine can't silently build with the wrong version | 2026-10-16 |
 | Device UI choice | One firmware; NVS `seedsigner`/`ui` read at power-on picks Classic (landscape) or Redesign (portrait); `tools/set_ui.py` switches over USB | Orientation is fixed at `board_init()`, so the choice must be known before Python runs; no reflash to switch, and portrait is the 4.3's native (faster) orientation | 2026-10-16 |
 | Native firmware build | `scripts/native_build.sh` with ESP-IDF v5.5.5 in `~/esp/esp-idf-v5.5.5`; MicroPython patches applied without a commit (`MP_PATCH_NO_COMMIT=1`) | No Docker; the upstream throwaway commit uses a fixed `builder@localhost` identity that this machine's account hooks rightly refuse | 2026-10-16 |
+| The 3.5″ mirror | Retired: the 3.5″ runs the builder firmware (PRE_REV3) with the Redesign, like the 4.3″ | One design on one engine across both boards; the HTML prototype stays in its repo as the visual reference | 2026-10-17 |
