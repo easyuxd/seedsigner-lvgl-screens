@@ -28,6 +28,7 @@ bool g_proto_loaded = false;
 json g_state = json::object();
 std::vector<std::string> g_stack;
 std::string g_error;
+lv_timer_t* g_auto = nullptr;  // the current screen's "auto" step, if any
 std::string g_out;  // backing store for returned C strings
 redesign_listener_t g_listener = nullptr;
 
@@ -81,6 +82,19 @@ void render_message(lv_obj_t* scr, const std::string& heading, const std::string
                          {"color", "fg2"}, {"align", "center"}}, "error.body");
 }
 
+void clear_auto() {
+    if (!g_auto) return;
+    delete static_cast<json*>(lv_timer_get_user_data(g_auto));
+    lv_timer_delete(g_auto);
+    g_auto = nullptr;
+}
+
+void on_auto(lv_timer_t* t) {
+    json node = *static_cast<json*>(lv_timer_get_user_data(t));
+    clear_auto();
+    rd::handle_tap(node);
+}
+
 void build_screen(lv_obj_t* scr, const std::string& id, const json& def) {
     std::string type = def.value("type", std::string());
     if (!is_known_type(type)) {
@@ -128,6 +142,15 @@ void build_screen(lv_obj_t* scr, const std::string& id, const json& def) {
                       {"tokens", {{"gap", "metric.bodyGap"}, {"bottom", "metric.bodyBottom"}}}});
     }
     rd::tag(scr, {{"component", "screen"}, {"id", id}, {"screen_type", type}});
+
+    // "auto": {"ms": 1600, "go": ...} acts like a tap after a delay (a progress screen
+    // moving on by itself). Any tap keys work.
+    if (def.contains("auto") && def.at("auto").is_object()) {
+        const json& a = def.at("auto");
+        g_auto = lv_timer_create(on_auto, (uint32_t)a.value("ms", 1000), new json(a));
+        lv_timer_set_repeat_count(g_auto, 1);
+        lv_timer_set_auto_delete(g_auto, false);
+    }
 }
 
 int render() {
@@ -136,6 +159,7 @@ int render() {
         return 0;
     }
     rd::clear_warnings();
+    clear_auto();
     lv_display_t* disp = lv_display_get_default();
     rd::set_screen_width(lv_display_get_horizontal_resolution(disp));
 
@@ -237,13 +261,18 @@ void handle_tap(const json& node) {
         g_state[key] = !g_state.value(key, false);
         return;
     }
+    if (node.contains("set") && node.at("set").is_object()) {
+        // Set prototype state without re-rendering (e.g. which seed is signing).
+        for (auto& [k, v] : node.at("set").items()) g_state[k] = v;
+    }
     if (node.contains("snack")) {
         const json& s = node.at("snack");
         show_snack(s.value("type", std::string("default")), s.value("label", std::string()),
                    s.value("sublabel", std::string()));
     }
     if (node.contains("go") && node.at("go").is_string()) {
-        lv_async_call(deferred_navigate, new std::string(node.at("go").get<std::string>()));
+        // "{key}" in a destination picks the screen from prototype state.
+        lv_async_call(deferred_navigate, new std::string(resolve_text(node.at("go").get<std::string>())));
     }
 }
 

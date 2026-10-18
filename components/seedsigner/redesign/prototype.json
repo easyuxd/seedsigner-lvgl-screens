@@ -5,7 +5,9 @@
 
   "state": {
     "kb_style": "Default",
-    "persistent": true
+    "persistent": true,
+    "signer": "73c5da0a",
+    "sign_next": "psbt_signing"
   },
 
   "screens": {
@@ -22,8 +24,8 @@
         ]}
       ],
       "actions": [
-        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80,
-          "snack": { "type": "info", "label": "Scan QR", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80, "go": "psbt_select_seed",
+          "_note": "Scanning isn't ported; for now Scan QR opens the PSBT flow as if a PSBT was scanned." },
         { "type": "row", "children": [
           { "type": "tile", "icon": "tools", "label": "Tools", "h": 80, "go": "tools" },
           { "type": "tile", "icon": "settings", "label": "Settings", "h": 80, "go": "settings" }
@@ -55,8 +57,8 @@
       "body": [
         { "type": "seed_header", "fp": "73c5da0a", "sub": "Single sig · Native segwit" },
         { "type": "group", "children": [
-          { "type": "list_item", "icon": "sign", "label": "Sign PSBT",
-            "snack": { "type": "info", "label": "Sign PSBT", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "sign", "label": "Sign PSBT", "go": "psbt_overview",
+            "set": { "signer": "73c5da0a", "sign_next": "psbt_signing" } },
           { "type": "list_item", "icon": "derivation", "label": "Export Xpub",
             "snack": { "type": "info", "label": "Export Xpub", "sublabel": "Not ported to LVGL yet" } },
           { "type": "list_item", "icon": "check", "label": "Address Explorer", "muted": true },
@@ -130,6 +132,216 @@
       "actions": [
         { "type": "cta", "label": "Try it",
           "snack": { "type": "info", "label": "Try it", "sublabel": "Passphrase entry is not ported to LVGL yet" } }
+      ]
+    },
+
+    "psbt_select_seed": {
+      "type": "menu_list",
+      "_note": "PSBT flow, demo transaction 'Standard spend' (prototype psbt.jsx PSBT_SCENARIOS[0]). Only 73c5da0a owns the inputs; picking another seed lets you reach Sign Failed, as upstream allows.",
+      "navbar": { "title": "Select Signer", "left": "back" },
+      "body": [
+        { "type": "note", "icon": "sign", "icon_color": "info", "children": [
+          { "type": "btc_amount", "sats": 2453100, "style": "caption", "prefix": "Spending", "prefix_color": "fg1",
+            "sub": false },
+          { "type": "text", "text": "Which key signs it?", "style": "caption", "weight": 400 }
+        ]},
+        { "type": "group", "children": [
+          { "type": "seed_row", "fp": "73c5da0a", "sub": "Signs this transaction", "sub_color": "success",
+            "trail": "success", "trail_color": "success", "set": { "signer": "73c5da0a", "sign_next": "psbt_signing" },
+            "go": "psbt_overview" },
+          { "type": "seed_row", "fp": "8a1f0c2b", "icon_color": "fg2", "fp_color": "fg2",
+            "sub": "Not in this transaction",
+            "set": { "signer": "8a1f0c2b", "sign_next": "psbt_signing_fail" }, "go": "psbt_overview" },
+          { "type": "seed_row", "fp": "d5630e9f", "icon_color": "fg2", "fp_color": "fg2",
+            "sub": "Not in this transaction",
+            "set": { "signer": "d5630e9f", "sign_next": "psbt_signing_fail" }, "go": "psbt_overview" },
+          { "type": "seed_row", "fp": "2f9c41ab", "icon_color": "fg2", "fp_color": "fg2",
+            "sub": "Not in this transaction",
+            "set": { "signer": "2f9c41ab", "sign_next": "psbt_signing_fail" }, "go": "psbt_overview" },
+          { "type": "seed_row", "fp": "0b7e5d63", "icon_color": "fg2", "fp_color": "fg2",
+            "sub": "Not in this transaction",
+            "set": { "signer": "0b7e5d63", "sign_next": "psbt_signing_fail" }, "go": "psbt_overview" }
+        ]}
+      ],
+      "actions": [
+        { "type": "add_row", "label": "Load the signing seed", "go": "add_seed" }
+      ]
+    },
+
+    "psbt_overview": {
+      "type": "review",
+      "_note": "The whole transaction at once. Rows name their role; tapping one opens the full address.",
+      "navbar": { "title": "Review", "subtitle": "2 inputs · 2 recipients", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 0 },
+        { "type": "group", "children": [
+          { "type": "text", "text": "SENDING", "style": "micro", "color": "fg2", "align": "center", "tracking": 1.6 },
+          { "type": "btc_amount", "sats": 2453100, "style": "display", "align": "center" }
+        ]},
+        { "type": "tx_card", "rows": [
+          { "tag": "TO", "label": "Recipient 1", "sats": 2400000, "go": "psbt_send_1" },
+          { "tag": "TO", "label": "Recipient 2", "sats": 53100, "go": "psbt_send_2" },
+          { "tag": "FEE", "label": "~ 15 sat/vB", "sats": 3100 },
+          { "tag": "CHANGE", "label": "Verified", "label_color": "success", "sats": 993800, "go": "psbt_change" }
+        ]},
+        { "type": "btc_amount", "sats": 3450000, "style": "micro", "color": "fg2", "align": "center", "unit": false,
+          "sub": false, "prefix": "from 2 inputs totalling" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Review details", "kind": "primary", "go": "psbt_math" }
+      ]
+    },
+
+    "psbt_math": {
+      "type": "review",
+      "_note": "Proves the numbers close: inputs - recipients - fee = change.",
+      "navbar": { "title": "The Math", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 1 },
+        { "type": "math", "lines": [
+          { "label": "2 inputs", "sats": 3450000 },
+          { "label": "2 recipients", "sats": 2453100, "sign": "−" },
+          { "label": "network fee", "sats": 3100, "sign": "−" },
+          { "label": "change", "sats": 993800, "rule": true }
+        ]}
+      ],
+      "actions": [
+        { "type": "cta", "label": "Review recipients", "kind": "primary", "go": "psbt_send_1" }
+      ]
+    },
+
+    "psbt_send_1": {
+      "type": "review",
+      "navbar": { "title": "Will Send", "subtitle": "Recipient 1 of 2", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 2 },
+        { "type": "btc_amount", "sats": 2400000, "style": "hero", "align": "center" },
+        { "type": "address_block", "address": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" },
+        { "type": "text", "text": "Compare every group against your wallet — not just the first and last.",
+          "style": "caption", "weight": 400, "color": "fg2", "align": "center" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next recipient", "kind": "primary", "go": "psbt_send_2" }
+      ],
+      "_note": "The screen a coordinator can lie to you on: amount, then the whole address."
+    },
+
+    "psbt_send_2": {
+      "type": "review",
+      "navbar": { "title": "Will Send", "subtitle": "Recipient 2 of 2", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 2 },
+        { "type": "btc_amount", "sats": 53100, "style": "hero", "align": "center" },
+        { "type": "address_block", "address": "bc1q9d4ywgfnd8h43da5tpcxcn6ajv590cg6d3tg6a" },
+        { "type": "text", "text": "Compare every group against your wallet — not just the first and last.",
+          "style": "caption", "weight": 400, "color": "fg2", "align": "center" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "psbt_change" }
+      ]
+    },
+
+    "psbt_change": {
+      "type": "review",
+      "navbar": { "title": "Your Change", "subtitle": "change address #3", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 3 },
+        { "type": "btc_amount", "sats": 993800, "style": "hero", "align": "center" },
+        { "type": "address_block", "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq" },
+        { "type": "pill", "icon": "success", "label": "Derived from {signer}", "color": "success" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "psbt_sign" }
+      ]
+    },
+
+    "psbt_sign": {
+      "type": "review",
+      "_note": "Everything the review established, restated once, above the only irreversible control.",
+      "navbar": { "title": "Sign", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 5, "at": 4 },
+        { "type": "summary_card", "rows": [
+          { "label": "Sending", "sats": 2453100 },
+          { "label": "To", "value": "2 recipients" },
+          { "label": "Fee", "sats": 3100 },
+          { "label": "Signer", "fp": "{signer}" }
+        ]},
+        { "type": "text", "text": "Signing is final. The signature leaves this device as a QR code.",
+          "style": "caption", "weight": 400, "color": "fg2", "align": "center" }
+      ],
+      "actions": [
+        { "type": "slide_to_confirm", "label": "Slide to sign", "icon": "sign", "go": "{sign_next}" }
+      ]
+    },
+
+    "psbt_signing": {
+      "type": "dialog",
+      "navbar": { "title": "Sign" },
+      "body": [
+        { "type": "spinner", "label": "Adding signature…" }
+      ],
+      "auto": { "ms": 1600, "go": "home", "snack": { "type": "info", "label": "Signed Transaction", "sublabel": "Not ported to LVGL yet" } }
+    },
+
+    "psbt_signing_fail": {
+      "type": "dialog",
+      "_note": "Same as psbt_signing, but the chosen seed isn't an input, so signing fails.",
+      "navbar": { "title": "Sign" },
+      "body": [
+        { "type": "spinner", "label": "Adding signature…" }
+      ],
+      "auto": { "ms": 1600, "go": "psbt_error" }
+    },
+
+    "psbt_error": {
+      "type": "dialog",
+      "navbar": { "title": "Sign Failed" },
+      "body": [
+        { "type": "message", "kind": "error", "badge": "Signing Failed",
+          "body": "Signing with {signer} did not add a valid signature. This key isn't one of the transaction's inputs." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Select different seed", "kind": "primary", "go": "psbt_select_seed" }
+      ]
+    },
+
+    "psbt_warn_script": {
+      "type": "dialog",
+      "_note": "Reached from the 'Unsupported script' demo transaction (not ported); open it from the Screens list.",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Unknown script",
+          "body": "This transaction has an input script type SeedSigner can't verify. Check the change addresses yourself before signing." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Continue", "kind": "primary", "go": "psbt_send_1" }
+      ]
+    },
+
+    "psbt_warn_nochange": {
+      "type": "dialog",
+      "_note": "Reached from the 'Full spend' demo transaction (not ported); open it from the Screens list.",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Full Spend!",
+          "body": "This transaction spends its entire input value. No change is coming back to your wallet." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Continue", "kind": "primary", "go": "psbt_math" }
+      ]
+    },
+
+    "psbt_verify_failed": {
+      "type": "dialog",
+      "_note": "Reached from an unverified change address (not in this demo transaction); open it from the Screens list.",
+      "navbar": { "title": "Check Change" },
+      "body": [
+        { "type": "message", "kind": "dire", "badge": "Not your change",
+          "body": "The change address could not be derived from {signer}. Change that isn't yours is money you don't get back." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Discard transaction", "kind": "dire", "go": "home" }
       ]
     }
   }

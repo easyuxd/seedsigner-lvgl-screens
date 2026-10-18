@@ -22,15 +22,16 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
    - Update [devices.md](devices.md).
 2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.
 3. ✅ **Press states** ([easyuxd/seedsigner-lvgl-screens#3](https://github.com/easyuxd/seedsigner-lvgl-screens/pull/3); firmware bump in [easyuxd/seedsigner-micropython-builder#3](https://github.com/easyuxd/seedsigner-micropython-builder/pull/3)), 2026-10-17, **verified on both boards**: option A · Quiet, chosen from three in `explorations/press-states-lab.html`. Color is instant on touch-down; scale 0.97 eases in over 30 ms and back over 140 ms; every tap holds its press at least 80 ms from touch-down; `surfacePress` `#393939`, `activePress` `#EB9209`; the selected `choice_list` option presses to `activePress`; transparent controls no longer flash white. Rules: [design-system.md](design-system.md) §6 and §10; why: [decisions.md](decisions.md) › Press states. The same builder PR fixes `Flash Device.command` stopping with `port?: unbound variable` when double-clicked.
-4. **Port the PSBT signing flow** (next) from `seedsigner-touchscreen/prototype/psbt.jsx`: new components `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([design-system.md](design-system.md) §12), plus the first `review` and `dialog` screens, styled from `tokens.json` and defined in `prototype.json`. Verify both sizes in the studio, then on both boards; keep [screen-coverage.md](screen-coverage.md) current.
+4. **PSBT signing flow**, 2026-10-17, **verified in the studio at both sizes and on both boards** (4.3″ and 3.5″, 2026-10-18). One demo transaction ("Standard spend"), end to end: Scan QR (stand-in) → Select Signer → Review → The Math → Will Send ×2 → Your Change → Sign (slide) → spinner → Home. Picking a seed that isn't an input leads to Sign Failed. The other warning and error dialogs are built and open from the studio's Screens list. New components `btc_amount`, `address_block`, `tx_card` (with the fee-share warning), `summary_card`, `math`, `step_rail`, `pill`, `message`, `note`, `spinner`, `slide_to_confirm`, and a `dire` CTA ([design-system.md](design-system.md) §12; [screen-coverage.md](screen-coverage.md)).
 5. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
 
 ## Design-system gaps (port with the first screen that needs them)
 
 - Breathing border for `warning` / `dire` / `error` dialogs.
+- The other three PSBT demo transactions (OP_RETURN, full spend, unsupported script) and the `psbt-opreturn` screen, only if a review needs them. Unverified change (Verify / Skip, its spinner) comes with them.
+- The slide-to-sign hint's pulsing chevrons (`ss-chev`); they're static for now.
 - A **Bold (700)** Open Sans face (currently renders SemiBold). Needed for amounts and emphasis.
 - Tabular numerals for UI-font counters; `textWrap: balance/pretty` equivalents (manual line breaks or a helper).
-- `Spinner` (rotating arc around ₿).
 - Prototype state beyond toggles and choices (e.g. adding or removing seeds), only if a flow needs it.
 
 ## Studio enhancements

@@ -78,6 +78,7 @@ The Design Studio shows every screen at both sizes side by side ([design-studio.
 | `inactive` | `#414141` | Off switches, dashed borders, disabled |
 | `surfacePress` | `#393939` | Press state: about a 6% white wash over `surface` |
 | `activePress` | `#EB9209` | Press state for something already orange: about an 8% black wash over `active` |
+| `activeDim` | `#80490B` | The spinner's trailing arc only |
 | `fg1` | `#FCFCFC` | Primary text |
 | `fg2` | `#B0B0B0` | **Readable** secondary text |
 | `fg3` | `#777777` | **Ornament only** |
@@ -132,11 +133,14 @@ The accent is for **focus or selection only, never decoration.** On a five-butto
 | `small` | 16 / 20 | Sublabels that must be read |
 | `caption` | 15 / 20 | Captions: **the floor for anything readable** |
 | `micro` | 13 / 16 | **Ornament only**: unit suffixes, all-caps tags, frame counters |
+| `address` | 19 / 22 | `address_block` chunks (mono) |
+| `addressLong` | 16 / 18 | `address_block` chunks for addresses over 48 characters, so four chunks still fit a row |
 
 **Families** (runtime TrueType, so any size renders crisply):
 
 - **UI:** Open Sans Regular (400) and SemiBold (600), shared with Classic (`fonts/opensans_western_*.c`).
-- **Mono:** Inconsolata SemiBold, used for **all bitcoin data**: fingerprints, addresses, amounts, hex (`redesign/fonts/rd_mono_semibold.c`).
+- **Mono:** Inconsolata SemiBold, used for **all bitcoin data**: fingerprints, addresses, amounts, hex (`redesign/fonts/rd_mono_semibold.c`). Subset to ASCII plus `·`, `…` and the minus sign `−` (for The Math).
+- **Glyphs Open Sans lacks:** `≈` and `−`. Write approximations as `~ 15 sat/vB`.
 - **Icons:** `seedsigner-icons`, PUA U+E900–U+E923, converted to TrueType outlines (`redesign/fonts/rd_icons.c`). Names are listed in `rd_ui.cpp` (`kIcons`).
 
 **Rules**
@@ -171,7 +175,7 @@ metric: edge 16 · navH 72 · rowH 48 · tileH 84 · tap 44 · navInset 12
 
 The target is a **cheap capacitive panel, not a phone**: imprecise, single contact, and least sensitive near the bezel.
 
-**Gesture budget: taps, plus one slide.** No bottom sheets, no swipe-back, no drag-to-reorder. The touch budget goes to press feedback, hit areas and contrast instead. Lists may scroll by dragging (LVGL's native scroll). The single exception is `SlideToConfirm`, reserved for the **one irreversible action**: adding a signature (not yet ported).
+**Gesture budget: taps, plus one slide.** No bottom sheets, no swipe-back, no drag-to-reorder. The touch budget goes to press feedback, hit areas and contrast instead. Lists may scroll by dragging (LVGL's native scroll). The single exception is `slide_to_confirm`, reserved for the **one irreversible action**: adding a signature.
 
 **Press feedback** (`pressable()` in `rd_ui.cpp`):
 
@@ -293,10 +297,12 @@ For translating a prototype component into `rd_ui.cpp`. Every value comes from a
 
 These are where a misread costs money. They're components, not ad-hoc markup, so they can't drift. Each one becomes a component in `rd_ui.cpp` when its flow is ported ([screen-coverage.md](screen-coverage.md)).
 
-- **`BtcAmount`**: BTC always to 8 places, grouped `0.00 000 000`, with everything before the first significant digit dimmed to `fg3`. **Never render an amount as a bare label.**
-- **`AddressBlock`**: the full address, never truncated, chunked 4 on a fixed column grid with zebra rows. **Deliberately no highlighted head or tail**, because emphasising the ends is what address-poisoning relies on.
-- **`SlideToConfirm`**: the only continuous gesture, reserved for adding a signature. 90% travel threshold; a fast committed swipe must not spring back.
-- **Fee share warning**: a fee above 5% of the amount sent turns the fee row `warning` and adds a caption.
+- **`btc_amount`**: BTC always to 8 places, grouped `0.00 000 000`, with everything before the first significant digit dimmed to `fg3`. **Never render an amount as a bare label.** The `BTC` unit is `micro` `fg3`; the sats line under it is mono `caption` `fg2` (the prototype's 13–14 px is below the readable floor, so it rose to 15). Inside rows (`tx_card`, `summary_card`, `math`) amounts use the same rule without the unit.
+- **`address_block`**: the full address, never truncated, chunked 4 on a fixed 4-column grid with zebra rows (`surface2` / `surface`). **Deliberately no highlighted head or tail**, because emphasising the ends is what address-poisoning relies on. Over 48 characters it steps down to `type.addressLong`.
+- **`slide_to_confirm`**: the only continuous gesture, reserved for adding a signature. Commit at 90% of the travel; anything less eases back over `motion.slideReturn`. The release position is read from the touch itself, so a fast committed swipe never springs back (verified with a single 410 px jump). On commit the thumb shows a check and the action runs after `motion.slideConfirm`. Thumb radius = `radius.md` − `metric.slidePad` (concentric rule).
+- **Fee share warning**: built into `tx_card`. A fee above 5% of the amount sent (rows tagged `TO`) turns the FEE row `warning` and adds a caption "Fee is N% of the amount sent." It can't be forgotten on a screen because no screen sets it.
+- **Dialog message** (`message`): tinted icon disc, badge in the message color, body `caption` 400 `fg1`, max `metric.msgBodyW`. A `dire` action is a grey button with a `dire` outline and label (`cta` `kind: dire`), never orange.
+- **`spinner`**: SeedSigner's rotating arc around ₿ (`activeDim` trail, `active` head, one turn per `motion.spin`). Progress screens use it as their only body and move on with the screen's `auto` step.
 
 ---
 
