@@ -24,7 +24,7 @@ Legend: ✅ ported · ⏳ next · ☐ not started
 | `settings` | `settings` | menu_list | Keyboard value follows the chosen style; the toggle works |
 | `kb-style` | `kb_style` | menu_bottom_list | Selection persists across screens |
 
-## Ported (PSBT signing, verified in the browser at both sizes; not yet on a board)
+## Ported (PSBT signing, verified in the browser and on both boards)
 
 One demo transaction, the prototype's "Standard spend" (2 inputs, 2 recipients, verified change). `{signer}` in prototype state is the seed picked on Select Signer.
 
