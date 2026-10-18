@@ -95,45 +95,126 @@ lv_obj_t* icon(lv_obj_t* parent, const std::string& name, int px, lv_color_t c) 
 }
 
 // ---------------------------------------------------------------------------
-// Press: the prototype's <Press>. Quiet press (one surface step) + scale 0.96,
-// as a transition (never a keyframe) so a rapid re-tap retargets smoothly.
+// Press: the prototype's <Press>, tuned for slow boards (design-system §6).
+// Touch-down: colour is instant, only the scale animates in (motion.press.inMs).
+// Release: scale and colour ease back (outMs). Transitions, never keyframes, so a
+// rapid re-tap retargets from wherever the last one was.
 // ---------------------------------------------------------------------------
-const lv_style_prop_t kPressProps[] = {LV_STYLE_TRANSFORM_SCALE_X, LV_STYLE_TRANSFORM_SCALE_Y,
-                                       LV_STYLE_BG_COLOR, LV_STYLE_PROP_INV};
-lv_style_transition_dsc_t g_press_trans;
+// LVGL gathers transitions from every style that applies to the state being
+// entered, and the rest-state style still applies while pressed, so per-state
+// transitions would race. Instead there is one transition, swapped just before
+// LVGL changes the state (LV_EVENT_PREPROCESS): press-in lists scale only, so
+// colour jumps; press-out lists scale and colour.
+const lv_style_prop_t kPressInProps[] = {LV_STYLE_TRANSFORM_SCALE_X, LV_STYLE_TRANSFORM_SCALE_Y,
+                                         LV_STYLE_PROP_INV};
+const lv_style_prop_t kPressOutProps[] = {LV_STYLE_TRANSFORM_SCALE_X, LV_STYLE_TRANSFORM_SCALE_Y,
+                                          LV_STYLE_BG_COLOR, LV_STYLE_BG_OPA, LV_STYLE_PROP_INV};
+lv_style_transition_dsc_t g_press_in;
+lv_style_transition_dsc_t g_press_out;
+
+// A tap's JSON plus its timing. A quick tap holds its press until motion.press.minMs
+// after touch-down, so every tap shows its press before the screen changes.
+struct Tap {
+    json node;
+    lv_obj_t* obj = nullptr;
+    uint32_t pressed_at = 0;
+    lv_timer_t* hold = nullptr;  // pending: the press is being held to minMs
+    bool clicked = false;        // the held press was a tap, so act when the hold ends
+};
+
+void set_press_transition(lv_obj_t* obj, bool in) {
+    lv_obj_set_style_transition(obj, in ? &g_press_in : &g_press_out, 0);
+}
+
+// End a held press: release it, then act if it was a tap.
+void end_hold(Tap* tap) {
+    lv_timer_delete(tap->hold);
+    tap->hold = nullptr;
+    set_press_transition(tap->obj, false);
+    lv_obj_remove_state(tap->obj, LV_STATE_PRESSED);
+    if (tap->clicked) handle_tap(tap->node);
+}
+
+void on_hold_done(lv_timer_t* t) { end_hold(static_cast<Tap*>(lv_timer_get_user_data(t))); }
+
+// Runs before LVGL's own handler, which adds or removes LV_STATE_PRESSED.
+void on_press_preprocess(lv_event_t* e) {
+    auto* tap = static_cast<Tap*>(lv_event_get_user_data(e));
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_PRESSED:
+        if (tap->hold) end_hold(tap);  // re-tap during a hold: finish the first one now
+        tap->pressed_at = lv_tick_get();
+        set_press_transition(tap->obj, true);
+        break;
+    case LV_EVENT_RELEASED: {
+        uint32_t min_ms = (uint32_t)std::max(0.0f, motion_value("press", "minMs", 0));
+        uint32_t held = lv_tick_elaps(tap->pressed_at);
+        auto* indev = static_cast<lv_indev_t*>(lv_event_get_param(e));
+        if (held < min_ms && lv_indev_get_scroll_obj(indev) == nullptr) {
+            // Too quick to have been seen: skip LVGL's release so the press stays on
+            // screen, and release it from a timer instead. CLICKED still follows.
+            lv_event_stop_processing(e);
+            tap->clicked = false;
+            tap->hold = lv_timer_create(on_hold_done, min_ms - held, tap);
+            lv_timer_set_repeat_count(tap->hold, 1);
+            lv_timer_set_auto_delete(tap->hold, false);
+            break;
+        }
+        set_press_transition(tap->obj, false);
+        break;
+    }
+    case LV_EVENT_PRESS_LOST:
+        set_press_transition(tap->obj, false);
+        break;
+    default:
+        break;
+    }
+}
 
 void on_tap_event(lv_event_t* e) {
-    auto* node = static_cast<json*>(lv_event_get_user_data(e));
+    auto* tap = static_cast<Tap*>(lv_event_get_user_data(e));
     if (lv_event_get_code(e) == LV_EVENT_DELETE) {
-        delete node;
+        if (tap->hold) lv_timer_delete(tap->hold);
+        delete tap;
         return;
     }
-    handle_tap(*node);
+    if (tap->hold) tap->clicked = true;  // act when the hold ends
+    else handle_tap(tap->node);
 }
 
 // Make obj pressable. bg / bg_press are color token names ("" = transparent at rest).
 // `node` is the JSON whose "go"/"snack"/"muted" decide what a tap does.
 void pressable(lv_obj_t* obj, const std::string& bg, const std::string& bg_press,
                const json& node, int claim_px = 0) {
-    lv_style_transition_dsc_init(&g_press_trans, kPressProps, lv_anim_path_ease_out,
-                                 (uint32_t)motion_ms("press"), 0, nullptr);
+    lv_style_transition_dsc_init(&g_press_in, kPressInProps, lv_anim_path_ease_out,
+                                 (uint32_t)motion_value("press", "inMs", 0), 0, nullptr);
+    lv_style_transition_dsc_init(&g_press_out, kPressOutProps, lv_anim_path_ease_out,
+                                 (uint32_t)motion_value("press", "outMs", 0), 0, nullptr);
     if (!bg.empty()) {
         lv_obj_set_style_bg_color(obj, color(bg), 0);
         lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    } else {
+        // Transparent at rest: hold the press colour at 0 opacity, so the release
+        // fades the fill out instead of animating from LVGL's default white.
+        lv_obj_set_style_bg_color(obj, color(bg_press), 0);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     }
     lv_obj_set_style_bg_color(obj, color(bg_press), LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_STATE_PRESSED);
-    int s = (int)std::lround(256.0f * motion_value("press", "scale", 0.96f));
+    int s = (int)std::lround(256.0f * motion_value("press", "scale", 1.0f));
     lv_obj_set_style_transform_scale_x(obj, s, LV_STATE_PRESSED);
     lv_obj_set_style_transform_scale_y(obj, s, LV_STATE_PRESSED);
     lv_obj_set_style_transform_pivot_x(obj, lv_pct(50), 0);
     lv_obj_set_style_transform_pivot_y(obj, lv_pct(50), 0);
-    lv_obj_set_style_transition(obj, &g_press_trans, 0);
+    set_press_transition(obj, false);
     lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     if (claim_px > 0) lv_obj_set_ext_click_area(obj, claim_px);
-    auto* data = new json(node);
-    lv_obj_add_event_cb(obj, on_tap_event, LV_EVENT_CLICKED, data);
-    lv_obj_add_event_cb(obj, on_tap_event, LV_EVENT_DELETE, data);
+    auto* tap = new Tap{node, obj};
+    for (lv_event_code_t c : {LV_EVENT_PRESSED, LV_EVENT_RELEASED, LV_EVENT_PRESS_LOST}) {
+        lv_obj_add_event_cb(obj, on_press_preprocess, (lv_event_code_t)(c | LV_EVENT_PREPROCESS), tap);
+    }
+    lv_obj_add_event_cb(obj, on_tap_event, LV_EVENT_CLICKED, tap);
+    lv_obj_add_event_cb(obj, on_tap_event, LV_EVENT_DELETE, tap);
 }
 
 // A row-shaped surface: rounded, horizontal flex, vertically centred.
@@ -355,7 +436,7 @@ lv_obj_t* choice_list(lv_obj_t* parent, const json& n) {
         }
         if (on) icon(o, "check", icon_size("check"), color("bg"));
         json tap = {{"choose", {{"key", key}, {"value", str(opt, "label")}}}};
-        pressable(o, on ? "active" : "surface", on ? "active" : "surfacePress", tap);
+        pressable(o, on ? "active" : "surface", on ? "activePress" : "surfacePress", tap);
         tag(o, {{"component", on ? "choice_list.option (selected)" : "choice_list.option"},
                 {"tokens", {{"bg", on ? "color.active" : "color.surface"}, {"min height", "metric.optionH"},
                             {"label", "type.body 600"}, {"blurb", "type.caption 400"}}}});

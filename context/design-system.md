@@ -1,6 +1,6 @@
 ---
 load_when: "Redesign visuals, tokens, components, interaction or copy"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - components/seedsigner/redesign/tokens.json
   - components/seedsigner/redesign/rd_ui.cpp
@@ -76,8 +76,8 @@ The Design Studio shows every screen at both sizes side by side ([design-studio.
 | `surface` | `#2C2C2C` | Rows, tiles, buttons |
 | `surface2` | `#242424` | Secondary surface (address blocks, quiet rows) |
 | `inactive` | `#414141` | Off switches, dashed borders, disabled |
-| `surfacePress` | `#3A3A3A` | Press state: one surface step up |
-| `activePress` | `#D97F00` | Press state for something already orange |
+| `surfacePress` | `#393939` | Press state: about a 6% white wash over `surface` |
+| `activePress` | `#EB9209` | Press state for something already orange: about an 8% black wash over `active` |
 | `fg1` | `#FCFCFC` | Primary text |
 | `fg2` | `#B0B0B0` | **Readable** secondary text |
 | `fg3` | `#777777` | **Ornament only** |
@@ -101,7 +101,9 @@ The accent is for **focus or selection only, never decoration.** On a five-butto
 2. **The currently selected option in a set**: keyboard style, QR density, an active toggle.
 3. **Live data the user is producing**: typed passphrase characters and caret, the dice count as it climbs.
 
-**Never a press flash.** A press uses `surfacePress`; something already orange uses `activePress`.
+**Never a press flash.** A press uses `surfacePress`; something already orange (including the selected option in a `choice_list`) uses `activePress`.
+
+**Press direction follows the content color.** A press washes the control with a little of its own text color, as Material and Apple do: white text on grey goes **lighter**, black text on orange goes **darker**. Darker grey would close the gap to the black background and lose the edge that stays visible around the fingertip; cheap IPS panels also crush dark greys together off-axis. Lighter orange reads as a glow, which is a press flash. (Compared in `explorations/press-states-lab.html`.)
 
 **One principled exception**, under job 3: the **letter grid in word entry** and the **dice faces** keep orange on press. During seed entry, "which key did I actually hit" is safety-critical on an imprecise panel. Don't extend this exception.
 
@@ -173,9 +175,13 @@ The target is a **cheap capacitive panel, not a phone**: imprecise, single conta
 
 **Press feedback** (`pressable()` in `rd_ui.cpp`):
 
-- Scale to `motion.press.scale` (0.96) and step the background to `surfacePress` (or `activePress` if orange), as a **transition of `motion.press.ms`** (160 ms, ease-out) on named properties only.
+- **Touch-down snaps.** The background steps to `surfacePress` (or `activePress` if orange) **instantly**; only the scale animates, to `motion.press.scale` (0.97) over `motion.press.inMs` (30 ms, ease-out). The boards draw few frames, and the shrink is the expensive part to draw, so the color doesn't wait for it.
+- **Release eases.** Scale and color ease back over `motion.press.outMs` (140 ms, ease-out). Press and release are deliberately asymmetric: the response snaps, the return is soft.
+- **Every tap shows its press.** A tap holds its press at least `motion.press.minMs` (80 ms) **from touch-down** before it acts (navigates, toggles, shows a snackbar). A normal tap is longer than that and waits 0 ms extra; only a very quick tap waits, by at most a few tens of ms. `pressable()` skips LVGL's release on such a tap and releases it from a timer instead. Dragging to scroll still cancels a press without a tap.
+- **Transparent-at-rest controls** (navbar buttons, `section_head` action, `add_row`) fill their own shape with `surfacePress` on press. Their rest state is the press color at 0 opacity, so the release fades the fill out; it never animates from white.
 - **Scale is the honest signal.** It changes the silhouette, so it stays legible around the fingertip, which a color change underneath the finger does not.
 - **A transition, never a keyframe.** A rapid re-tap retargets from the current scale.
+- **Known overlap:** a pressed `toggle_row` (`#393939`) sits close to the off-switch track (`inactive`, `#414141`). It lasts only while the finger is down; accepted.
 
 **Painted rect vs. hit rect ("claim").** A control may claim more area than it paints (`lv_obj_set_ext_click_area`):
 
@@ -248,12 +254,14 @@ From the UX guidelines. These are **law**: when copy doesn't fit, shorten the co
 
 | Element | Token | Duration | Easing |
 |---|---|---|---|
-| Press feedback | `motion.press` | 160 ms | ease-out |
+| Press in (scale only; color instant) | `motion.press.inMs` | 30 ms | ease-out |
+| Press release (scale + color) | `motion.press.outMs` | 140 ms | ease-out |
+| Minimum press, from touch-down | `motion.press.minMs` | 80 ms | — |
 | Snackbar enter | `motion.snackIn` | 200 ms | ease-out |
 | Snackbar exit | `motion.snackOut` | 150 ms | ease-in-out |
 | Snackbar hold | `motion.snackHold` | 2600 ms | — |
 
-**Rules:** exits are faster than enters. Use transitions for anything interruptible, and animations only for indefinite loops. Never `ease-in` on UI, because it delays the moment the user is watching most closely. Keep anything in the interaction path under 300 ms. LVGL easing is `lv_anim_path_*`; the prototype's exact cubic-béziers are approximated by `ease_out` / `ease_in_out`.
+**Rules:** exits are faster than enters. Use transitions for anything interruptible, and animations only for indefinite loops. Never `ease-in` on UI, because it delays the moment the user is watching most closely. Keep anything in the interaction path under 300 ms. The more often a control is tapped, the less it animates: anything that must feel instant (press color, state changes) doesn't animate at all. LVGL easing is `lv_anim_path_*`; the prototype's exact cubic-béziers are approximated by `ease_out` / `ease_in_out`.
 
 ---
 
