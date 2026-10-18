@@ -1,6 +1,6 @@
 ---
 load_when: "what's planned or deferred"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - context/backlog.md
 ---
@@ -17,12 +17,22 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
    - Add a boot choice: **Classic wallet** or **Redesign prototype**.
    - Portrait display orientation for the 4.3″ (480×800) and 3.5″ (320×480) when the Redesign runs.
    - A native (no-Docker) firmware build using `~/esp/esp-idf`, with the version matched to the builder's pin.
-   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). *Not built yet: do it once flashing is verified by hand.*
+   - `Flash Device.command`: build and flash whichever board is plugged in, after a chip-revision check (PRE_REV3 for the 3.5″). ✅ [easyuxd/seedsigner-micropython-builder#2](https://github.com/easyuxd/seedsigner-micropython-builder/pull/2), verified on the 3.5″ (2026-10-17).
    - Push `tokens.json` / `prototype.json` to a board over USB without a rebuild, the device-side twin of the studio's hot reload.
    - Update [devices.md](devices.md).
-2. **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`, retiring its mirror) and test the foundation screens on both boards side by side. (The 4.3″ is done.)
+2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.
 3. **Port the PSBT signing flow**, with `BtcAmount`, `AddressBlock`, `SlideToConfirm` and the fee-share warning ([screen-coverage.md](screen-coverage.md)).
 4. **Port the remaining flows** in this order: QR transport → seed backup → discard → load/create seed → passphrase + keyboards → export Xpub → BIP-85.
+
+## Press states (next, its own PR)
+
+**Every button needs a press you can see, and the same one everywhere.** On the boards, the large tiles and list rows feel like they have no press state (designer's report, 2026-10-17). Every component already goes through `pressable()` in `rd_ui.cpp`, so the problem is how it behaves, not missing code:
+
+- Color and scale both ease in over 160 ms (`motion.press.ms`), and a tap navigates as soon as the finger lifts, so a quick tap changes screen before the press has visibly appeared. Large surfaces show it least.
+- The selected `choice_list` option presses to `active` (its rest color), so it only scales.
+- Transparent-at-rest controls (navbar buttons, `section_head` action, `add_row`) animate their color from LVGL's default white, so they can flash light.
+
+**Proposed fix (option "B · Snappy", shown to the designer as an interactive mock; not yet confirmed):** the press color appears instantly (only scale is animated, ~100 ms); scale 0.95; `surfacePress` one step lighter (`#454545`); every tap holds its pressed look for at least ~120 ms before the screen changes (new `motion.press.minMs`); the selected option presses to `activePress`. All values are tokens. Update design-system.md §6 and §10, log it in decisions.md, and confirm on both boards.
 
 ## Design-system gaps (port with the first screen that needs them)
 

@@ -1,6 +1,6 @@
 ---
 load_when: "boards, flashing, chip revisions, setting up a new machine"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - context/devices.md
   - tools/apps/web_runner/studio.sh
@@ -16,8 +16,8 @@ How to reproduce this whole setup on another Mac, for another person, and how ea
 |---|---|---|
 | Panel | 480×800, MIPI-DSI | 320×480 |
 | Redesign scale | 1 pt = 1.5 px | 1 pt = 1 px |
-| Runs today | easyuxd builder firmware: **Redesign** selected (switch with `set_ui.py`) | The HTML-prototype **mirror** from seedsigner-touchscreen |
-| Chip revision | v3.x (current boards; the standard image flashed) | **v1.3** (older silicon) |
+| Runs today | easyuxd builder firmware: **Redesign** selected (switch with `set_ui.py`) | easyuxd builder firmware (`PRE_REV3` image): **Redesign** selected (switch with `set_ui.py`) |
+| Chip revision | v3.2 (current boards; the standard image) | **v1.3** (older silicon) |
 | Builder board name | `WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43` | `WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35` |
 | Image variant | default | **`BOARD_VARIANT=PRE_REV3`** (v1.x chips can't run the default image) |
 
@@ -27,9 +27,7 @@ Both connect over USB-C. A **data** cable is required; a charge-only cable power
 
 1. **Now (PR 1):** design in the Design Studio. The browser is the source of truth while iterating.
 2. **PR 2** ([easyuxd/seedsigner-micropython-builder#1](https://github.com/easyuxd/seedsigner-micropython-builder/pull/1)): one firmware that boots either Classic or the Redesign prototype. Built and verified on macOS. **Verified on the 4.3″** (2026-10-16): Redesign in portrait with correct orientation and touch, Classic unchanged, switching both ways.
-3. **Then:** flash the **3.5″** with the same design (PRE_REV3 image), retiring its mirror firmware, and test both boards side by side.
-
-Until step 3 the 3.5″ keeps the mirror, so the HTML prototype can still be shown on hardware.
+3. **Done (2026-10-17):** the **3.5″** runs the same firmware (PRE_REV3 image), Redesign selected; portrait, orientation and touch confirmed by the owner. Its HTML-prototype mirror firmware is retired.
 
 ## 4.3″: flashing SeedSigner firmware today
 
@@ -45,7 +43,10 @@ This prebuilt image shows **Classic** only. For the Redesign, use the easyuxd bu
 
 ## Building and flashing the Redesign firmware (easyuxd builder fork)
 
-In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-build.md`):
+In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-build.md`).
+
+**The easy way:** plug the board in by its UART port and double-click **`Flash Device.command`** in that folder ([easyuxd/seedsigner-micropython-builder#2](https://github.com/easyuxd/seedsigner-micropython-builder/pull/2)). It checks the chip, picks the right image (PRE_REV3 for chip v1.x), builds it if needed, asks before flashing, then asks Classic or Redesign. The manual steps:
+
 
 1. **One-time:** ESP-IDF v5.5.5 in its own folder (your other ESP-IDF stays untouched):
    ```bash
@@ -66,11 +67,9 @@ In `~/GitHub/easyuxd/seedsigner-micropython-builder` (details: its `docs/native-
 
 The Redesign's tokens and screens are compiled into the image, so after editing `tokens.json` or `prototype.json` in the Design Studio, rebuild (step 2) and reflash (step 3) to see them on a board.
 
-## 3.5″: the mirror (until it's switched over)
+## 3.5″: the retired mirror
 
-It runs the live HTML mirror from [easyuxd/seedsigner-touchscreen](https://github.com/easyuxd/seedsigner-touchscreen). Its daily use (start the bridge, open the SeedSigner app on the device) and its firmware (`firmware/fw flash`, with ESP-IDF in `~/esp/esp-idf`) are documented in that repo's `README.md` and `docs/03-daily-workflow.md`. Its WiFi credentials file (`firmware/wifi.local.defaults`) is private: never read, print or commit it.
-
-When it moves to SeedSigner firmware, it needs the `PRE_REV3` build of the 3.5″ board (step 3 above).
+Until 2026-10-17 the 3.5″ ran the live HTML mirror from [easyuxd/seedsigner-touchscreen](https://github.com/easyuxd/seedsigner-touchscreen) (documented in that repo's `README.md` and `docs/03-daily-workflow.md`). It now runs the builder firmware like the 4.3″. To show the HTML prototype on hardware again, reflash it from that repo (with the owner's OK). Its WiFi credentials file (`firmware/wifi.local.defaults`) is private: never read, print or commit it.
 
 ## Setting up a new Mac
 
