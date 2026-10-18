@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <unordered_map>
 
 #include "rd_tokens.h"
@@ -310,11 +312,16 @@ lv_obj_t* seed_row(lv_obj_t* parent, const json& n) {
     icon(o, "fingerprint", icon_size("seed"), color(str(n, "icon_color", "fg1")));
     lv_obj_t* col = grow(flex(o, LV_FLEX_FLOW_COLUMN, 0));
     lv_obj_set_height(col, LV_SIZE_CONTENT);
-    lv_obj_t* fp = mono(col, str(n, "fp"), "large", "fg1");
+    lv_obj_t* fp = mono(col, str(n, "fp"), "large", str(n, "fp_color", "fg1"));
     lv_obj_set_width(fp, lv_pct(100));
     lv_label_set_long_mode(fp, LV_LABEL_LONG_MODE_DOTS);
-    if (n.contains("sub")) text(col, str(n, "sub"), "caption", 600, "fg2");
-    icon(o, "chevronRight", icon_size("chevron"), color("fg3"));
+    if (n.contains("sub")) text(col, str(n, "sub"), "caption", 600, str(n, "sub_color", "fg2"));
+    // Trailing icon: a chevron by default; a status icon (e.g. the signer check) when set.
+    if (n.contains("trail")) {
+        icon(o, str(n, "trail"), icon_size("check"), color(str(n, "trail_color", "fg1")));
+    } else {
+        icon(o, "chevronRight", icon_size("chevron"), color("fg3"));
+    }
     pressable(o, "surface", "surfacePress", n);
     tag(o, {{"component", "seed_row"},
             {"tokens", {{"bg", "color.surface"}, {"radius", "radius.md"}, {"height", "metric.rowH"},
@@ -406,6 +413,20 @@ lv_obj_t* cta(lv_obj_t* parent, const json& n) {
     lv_obj_t* o = row_surface(parent, 0, 0);
     lv_obj_set_height(o, metric("tap"));
     lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    if (str(n, "kind") == "dire") {
+        // Funds-at-risk action: a dire outline on a grey button, never an orange one.
+        text(o, str(n, "label"), "button", 600, "dire");
+        pressable(o, "surface", "surfacePress", n);
+        lv_obj_set_style_border_width(o, metric("direBorder"), 0);
+        lv_obj_set_style_border_color(o, color("dire"), 0);
+        lv_obj_set_style_border_opa(o, opacity("direBorder"), 0);
+        lv_obj_set_style_bg_color(o, lv_color_mix(color("dire"), color("surface"), opacity("direPress")),
+                                  LV_STATE_PRESSED);
+        tag(o, {{"component", "cta (dire)"},
+                {"tokens", {{"bg", "color.surface"}, {"border", "metric.direBorder / color.dire @ opacity.direBorder"},
+                            {"press", "color.dire @ opacity.direPress"}, {"label", "type.button 600 / color.dire"}}}});
+        return o;
+    }
     text(o, str(n, "label"), "button", 600, primary ? "bg" : "fg1");
     pressable(o, primary ? "active" : "surface", primary ? "activePress" : "surfacePress", n);
     tag(o, {{"component", primary ? "cta (primary)" : "cta"},
@@ -478,6 +499,7 @@ lv_obj_t* text_node(lv_obj_t* parent, const json& n) {
     lv_obj_t* l = text(parent, str(n, "text"), str(n, "style", "body"), n.value("weight", 600),
                        str(n, "color", "fg1"));
     lv_obj_set_width(l, lv_pct(100));
+    if (n.contains("tracking")) lv_obj_set_style_text_letter_space(l, pt(n.at("tracking").get<float>()), 0);
     std::string align = str(n, "align", "left");
     lv_obj_set_style_text_align(l, align == "center" ? LV_TEXT_ALIGN_CENTER
                                    : align == "right" ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
@@ -507,6 +529,580 @@ lv_obj_t* spacer(lv_obj_t* parent, const json& n) {
     lv_obj_t* o = box(parent);
     lv_obj_set_size(o, lv_pct(100), pt(n.value("h", 8.0f)));
     return o;
+}
+
+
+// ---------------------------------------------------------------------------
+// Bitcoin data (design-system §12). Where a misread costs money, so these are
+// components rather than ad-hoc labels, and their rules can't drift.
+// ---------------------------------------------------------------------------
+
+long long sats_of(const json& n, const char* key = "sats") {
+    return n.contains(key) && n.at(key).is_number() ? n.at(key).get<long long>() : 0;
+}
+
+// BTC to 8 places, grouped "0.00 000 000". `dim` is everything before the first
+// significant digit, so 0.00 993 800 can't be read as 0.09 938 000.
+void btc_parts(long long sats, std::string* dim, std::string* lit) {
+    unsigned long long v = (unsigned long long)std::llabs(sats);
+    char frac[9];
+    snprintf(frac, sizeof frac, "%08llu", v % 100000000ULL);
+    std::string f(frac);
+    std::string s = std::to_string(v / 100000000ULL) + "." + f.substr(0, 2) + " " + f.substr(2, 3) + " " +
+                    f.substr(5, 3);
+    size_t i = 0;
+    while (i < s.size() && (s[i] == '0' || s[i] == '.' || s[i] == ' ')) i++;
+    if (i >= s.size()) i = 2;  // a true zero: dim everything past "0."
+    *dim = s.substr(0, i);
+    *lit = s.substr(i);
+}
+
+std::string sats_text(long long sats) {
+    std::string d = std::to_string(std::llabs(sats));
+    for (int i = (int)d.size() - 3; i > 0; i -= 3) d.insert((size_t)i, ",");
+    return d + " sats";
+}
+
+// One line of an amount: [sign] dim lit [BTC]. Mono throughout, so digits align.
+lv_obj_t* btc_line(lv_obj_t* parent, long long sats, const std::string& style, const std::string& col,
+                   bool unit, const std::string& sign) {
+    lv_obj_t* r = flex(parent, LV_FLEX_FLOW_ROW, 0);
+    lv_obj_set_size(r, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+    if (!sign.empty()) {
+        lv_obj_t* sg = mono(r, sign, style, "fg3");
+        lv_obj_set_style_pad_right(sg, space("xxs"), 0);
+    }
+    std::string dim, lit;
+    btc_parts(sats, &dim, &lit);
+    if (!dim.empty()) mono(r, dim, style, "fg3");
+    mono(r, lit, style, col);
+    if (unit) {
+        lv_obj_t* u = text(r, "BTC", "micro", 600, "fg3");
+        bool big = type(style).size >= type("hero").size;
+        lv_obj_set_style_pad_left(u, space(big ? "xs" : "xxs"), 0);
+    }
+    return r;
+}
+
+lv_flex_align_t cross_align(const std::string& a) {
+    return a == "center" ? LV_FLEX_ALIGN_CENTER : a == "right" ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START;
+}
+
+lv_obj_t* btc_amount(lv_obj_t* parent, const json& n) {
+    long long sats = sats_of(n);
+    std::string style = str(n, "style", "hero");
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, pt(3));
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    // The track must align too: LVGL places a lone item within its track, then the track.
+    lv_flex_align_t cross = cross_align(str(n, "align", "left"));
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_START, cross, cross);
+    lv_obj_t* line = o;
+    if (n.contains("prefix")) {
+        line = flex(o, LV_FLEX_FLOW_ROW, 0);
+        lv_obj_set_size(line, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_flex_align(line, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+        lv_obj_t* pre = text(line, str(n, "prefix"), "caption", 400, str(n, "prefix_color", "fg2"));
+        lv_obj_set_style_pad_right(pre, space("xxs"), 0);
+    }
+    btc_line(line, sats, style, str(n, "color", "fg1"), n.value("unit", true), str(n, "sign"));
+    if (n.value("sub", true)) mono(o, sats_text(sats), "caption", "fg2");
+    tag(o, {{"component", "btc_amount"}, {"sats", sats},
+            {"tokens", {{"amount", "mono type." + style + " / color." + str(n, "color", "fg1")},
+                        {"leading zeros", "color.fg3"}, {"unit", "type.micro 600 / color.fg3"},
+                        {"sats", "mono type.caption / color.fg2"}}}});
+    return o;
+}
+
+// Addresses longer than this (P2WSH, taproot: 62 characters) step down to
+// type.addressLong so four chunks still fit a row.
+constexpr size_t kAddrLongAt = 48;
+
+// The full address, never truncated, chunked 4 on a 4-column grid with zebra rows.
+// No highlighted head or tail: emphasising the ends is what address poisoning needs.
+lv_obj_t* address_block(lv_obj_t* parent, const json& n) {
+    std::string addr = str(n, "address");
+    std::string style = addr.size() > kAddrLongAt ? "addressLong" : "address";
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, 0);
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(o, radius("md"), 0);
+    lv_obj_set_style_clip_corner(o, true, 0);
+    lv_obj_set_style_bg_color(o, color("surface2"), 0);
+    lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+    const size_t chunk = 4, per_row = 4;
+    for (size_t r = 0; r * chunk * per_row < addr.size(); ++r) {
+        lv_obj_t* row = flex(o, LV_FLEX_FLOW_ROW, 0);
+        lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_ver(row, metric("addrPadY"), 0);
+        lv_obj_set_style_pad_hor(row, metric("addrPadX"), 0);
+        if (r % 2) {
+            lv_obj_set_style_bg_color(row, color("surface"), 0);
+            lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
+        }
+        for (size_t c = 0; c < per_row; ++c) {
+            size_t at = (r * per_row + c) * chunk;
+            if (at >= addr.size()) break;
+            lv_obj_t* l = mono(row, addr.substr(at, chunk), style, "fg1");
+            lv_obj_set_width(l, lv_pct(25));  // fixed columns, so a short last row stays on the grid
+            lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_style_text_letter_space(l, pt(0.8f), 0);
+        }
+    }
+    tag(o, {{"component", "address_block"}, {"chars", addr.size()},
+            {"tokens", {{"bg", "color.surface2, zebra color.surface"}, {"radius", "radius.md"},
+                        {"chunk", "mono type." + style + " / color.fg1"},
+                        {"switch", "type.addressLong above 48 characters"},
+                        {"pad", "metric.addrPadX x metric.addrPadY"}}}});
+    return o;
+}
+
+// A 1px divider along the top of a row inside a card.
+void divider_top(lv_obj_t* o) {
+    lv_obj_set_style_border_side(o, LV_BORDER_SIDE_TOP, 0);
+    lv_obj_set_style_border_width(o, pt(1), 0);
+    lv_obj_set_style_border_color(o, color("fg1"), 0);
+    lv_obj_set_style_border_opa(o, opacity("divider"), 0);
+}
+
+lv_obj_t* card(lv_obj_t* parent) {
+    lv_obj_t* c = flex(parent, LV_FLEX_FLOW_COLUMN, 0);
+    lv_obj_set_size(c, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(c, radius("md"), 0);
+    lv_obj_set_style_clip_corner(c, true, 0);
+    lv_obj_set_style_bg_color(c, color("surface"), 0);
+    lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
+    return c;
+}
+
+// A fee above this share of the amount sent is the classic way a tampered PSBT
+// drains a wallet, so it gets a colour and a caption (design-system §12).
+constexpr long long kFeeShareWarnPct = 5;
+
+// The overview's transaction breakdown. Rows name their role instead of showing a
+// truncated address; tapping a row opens the real thing.
+//
+// Measured geometry (prototype psbt.jsx TxRow): four columns in 288 pt, no slack.
+//   content 288 - 2 x space.sm (12) = 264; three gaps 3 x metric.txGap (6) = 18
+//   tag column metric.txTagCol 62  ("CHANGE", type.micro, 0.6 pt tracking = 58, +4)
+//   amount "0.02 453 100", mono type.micro ~ 86; chevron slot metric.txChevronSlot 15
+//   => label column ~ 83 ("~ 15 sat/vB" and "Network fee" fit; longer labels dot out)
+// Change a column or the type and you must re-measure. Every column truncates.
+lv_obj_t* tx_card(lv_obj_t* parent, const json& n, const std::string& path) {
+    const json rows = n.value("rows", json::array());
+    long long spend = 0, fee = 0;
+    for (const auto& r : rows) {
+        if (str(r, "tag") == "TO") spend += sats_of(r);
+        if (str(r, "tag") == "FEE") fee += sats_of(r);
+    }
+    bool high_fee = spend > 0 && fee * 100 > spend * kFeeShareWarnPct;
+
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, metric("listGap"));
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_t* c = card(o);
+    int i = 0;
+    for (const auto& r : rows) {
+        bool is_fee = str(r, "tag") == "FEE";
+        bool tappable = r.contains("go") || r.contains("snack");
+        lv_obj_t* row = flex(c, LV_FLEX_FLOW_ROW, metric("txGap"));
+        lv_obj_set_size(row, lv_pct(100), metric("rowH"));
+        lv_obj_set_style_pad_hor(row, space("sm"), 0);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        if (i > 0) divider_top(row);
+        std::string tag_col = is_fee && high_fee ? "warning" : str(r, "tag_color", "fg2");
+        lv_obj_t* t = text(row, str(r, "tag"), "micro", 600, tag_col);
+        lv_obj_set_width(t, metric("txTagCol"));
+        lv_obj_set_style_text_letter_space(t, pt(0.6f), 0);
+        lv_label_set_long_mode(t, LV_LABEL_LONG_MODE_DOTS);
+        lv_obj_t* l = text(row, str(r, "label"), "micro", 600, str(r, "label_color", "fg1"));
+        lv_obj_set_width(l, 0);
+        lv_obj_set_flex_grow(l, 1);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_DOTS);
+        btc_line(row, sats_of(r), "micro", is_fee && high_fee ? "warning" : str(r, "value_color", "fg1"), false, "");
+        // The chevron slot is always reserved, so amounts stay on one column.
+        lv_obj_t* slot = flex(row, LV_FLEX_FLOW_ROW, 0);
+        lv_obj_set_size(slot, metric("txChevronSlot"), LV_SIZE_CONTENT);
+        lv_obj_set_flex_align(slot, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        if (tappable) {
+            icon(slot, "chevronRight", icon_size("txChevron"), color("fg3"));
+            pressable(row, "surface", "surfacePress", r);
+        }
+        tag(row, {{"component", "tx_card.row"}, {"path", path + ".rows[" + std::to_string(i) + "]"},
+                  {"tokens", {{"height", "metric.rowH"}, {"tag", "type.micro 600 / metric.txTagCol"},
+                              {"label", "type.micro 600"}, {"amount", "mono type.micro"},
+                              {"divider", "color.fg1 @ opacity.divider"}}}});
+        ++i;
+    }
+    if (high_fee) {
+        lv_obj_t* w = flex(o, LV_FLEX_FLOW_ROW, space("xs"));
+        lv_obj_set_size(w, lv_pct(100), LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_hor(w, space("xxs"), 0);
+        lv_obj_set_flex_align(w, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        icon(w, "warning", icon_size("feeWarn"), color("warning"));
+        long long pct = (fee * 100 + spend / 2) / spend;
+        grow(text(w, "Fee is " + std::to_string(pct) + "% of the amount sent.", "caption", 600, "warning"));
+        tag(w, {{"component", "tx_card.fee_warning"},
+                {"rule", "fee > " + std::to_string(kFeeShareWarnPct) + "% of the amount sent (rows tagged TO)"},
+                {"tokens", {{"text", "type.caption 600 / color.warning"}}}});
+    }
+    tag(c, {{"component", "tx_card"}, {"high_fee", high_fee},
+            {"tokens", {{"bg", "color.surface"}, {"radius", "radius.md"}}}});
+    return o;
+}
+
+// Label + value rows in a card (the Sign screen's recap). A value is an amount
+// (`sats`), plain text (`value`) or a fingerprint (`fp`).
+lv_obj_t* summary_card(lv_obj_t* parent, const json& n) {
+    lv_obj_t* c = card(parent);
+    lv_obj_set_style_pad_ver(c, pt(6), 0);
+    int i = 0;
+    for (const auto& r : n.value("rows", json::array())) {
+        lv_obj_t* row = flex(c, LV_FLEX_FLOW_ROW, metric("bodyGap"));
+        lv_obj_set_size(row, lv_pct(100), metric("summaryRowH"));
+        lv_obj_set_style_pad_hor(row, space("sm"), 0);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        if (i++ > 0) divider_top(row);
+        lv_obj_t* l = text(row, str(r, "label"), "caption", 600, "fg2");
+        lv_obj_set_width(l, metric("summaryLabelW"));
+        lv_obj_t* v = grow(flex(row, LV_FLEX_FLOW_ROW, space("xs")));
+        lv_obj_set_height(v, LV_SIZE_CONTENT);
+        lv_obj_set_flex_align(v, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        std::string col = str(r, "color", "fg1");
+        if (r.contains("sats")) {
+            btc_line(v, sats_of(r), "caption", col, false, "");
+        } else if (r.contains("fp")) {
+            icon(v, "fingerprint", icon_size("summaryFp"), color("fg2"));
+            mono(v, str(r, "fp"), "small", col);
+        } else {
+            text(v, str(r, "value"), "caption", 600, col);
+        }
+    }
+    tag(c, {{"component", "summary_card"},
+            {"tokens", {{"bg", "color.surface"}, {"row", "metric.summaryRowH"}, {"label", "type.caption 600 / color.fg2"},
+                        {"label column", "metric.summaryLabelW"}, {"amount", "mono type.caption"}}}});
+    return c;
+}
+
+// The arithmetic that proves the numbers close: inputs - recipients - fee = change.
+lv_obj_t* math(lv_obj_t* parent, const json& n) {
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, 0);
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    for (const auto& r : n.value("lines", json::array())) {
+        lv_obj_t* row = flex(o, LV_FLEX_FLOW_ROW, metric("bodyGap"));
+        lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_ver(row, space("xs"), 0);
+        lv_obj_set_style_pad_hor(row, pt(2), 0);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        if (r.value("rule", false)) {
+            lv_obj_set_style_border_side(row, LV_BORDER_SIDE_TOP, 0);
+            lv_obj_set_style_border_width(row, pt(1), 0);
+            lv_obj_set_style_border_color(row, color("inactive"), 0);
+            lv_obj_set_style_margin_top(row, space("xxs"), 0);
+            lv_obj_set_style_pad_top(row, space("sm"), 0);
+        }
+        grow(text(row, str(r, "label"), "caption", 600, "fg2"));
+        btc_line(row, sats_of(r), "body", str(r, "color", "fg1"), false, str(r, "sign"));
+    }
+    tag(o, {{"component", "math"},
+            {"tokens", {{"label", "type.caption 600 / color.fg2"}, {"amount", "mono type.body"},
+                        {"rule", "color.inactive"}}}});
+    return o;
+}
+
+// Where the review is: done steps green, the current one orange, the rest grey.
+lv_obj_t* step_rail(lv_obj_t* parent, const json& n) {
+    int steps = n.value("steps", 1), at = n.value("at", 0);
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_ROW, metric("railGap"));
+    lv_obj_set_size(o, lv_pct(100), metric("railH"));
+    for (int i = 0; i < steps; ++i) {
+        lv_obj_t* b = box(o);
+        lv_obj_set_size(b, 0, lv_pct(100));
+        lv_obj_set_flex_grow(b, 1);
+        lv_obj_set_style_radius(b, radius("pill"), 0);
+        lv_obj_set_style_bg_color(b, color(i < at ? "success" : i == at ? "active" : "inactive"), 0);
+        lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+    }
+    tag(o, {{"component", "step_rail"}, {"step", std::to_string(at + 1) + " of " + std::to_string(steps)},
+            {"tokens", {{"height", "metric.railH"}, {"gap", "metric.railGap"},
+                        {"colors", "done color.success / now color.active / later color.inactive"}}}});
+    return o;
+}
+
+// Tinted status capsule with an icon, centred. One line.
+lv_obj_t* pill(lv_obj_t* parent, const json& n) {
+    std::string col = str(n, "color", "success");
+    lv_obj_t* wrap = flex(parent, LV_FLEX_FLOW_ROW, 0);
+    lv_obj_set_size(wrap, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(wrap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t* o = flex(wrap, LV_FLEX_FLOW_ROW, space("xs"));
+    lv_obj_set_size(o, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_radius(o, radius("pill"), 0);
+    lv_obj_set_style_pad_ver(o, metric("pillPadY"), 0);
+    lv_obj_set_style_pad_left(o, space("xs"), 0);
+    lv_obj_set_style_pad_right(o, space("sm"), 0);
+    lv_obj_set_style_bg_color(o, color(col), 0);
+    lv_obj_set_style_bg_opa(o, opacity("tint"), 0);
+    lv_obj_set_style_border_width(o, pt(1), 0);
+    lv_obj_set_style_border_color(o, color(col), 0);
+    lv_obj_set_style_border_opa(o, opacity("tintBorder"), 0);
+    if (n.contains("icon")) icon(o, str(n, "icon"), icon_size("pill"), color(col));
+    text(o, str(n, "label"), "caption", 600, col);
+    tag(o, {{"component", "pill"},
+            {"tokens", {{"bg", "color." + col + " @ opacity.tint"}, {"border", "color." + col + " @ opacity.tintBorder"},
+                        {"radius", "radius.pill"}, {"label", "type.caption 600"}}}});
+    return wrap;
+}
+
+// A dialog's message: tinted icon disc, badge and body, centred. `kind` is one of
+// the six message types (design-system §8).
+lv_obj_t* message(lv_obj_t* parent, const json& n) {
+    std::string kind = str(n, "kind", "default");
+    auto it = kMsg.find(kind);
+    if (it == kMsg.end()) {
+        warn("Unknown message kind '" + kind + "'");
+        it = kMsg.find("default");
+    }
+    const Msg& m = it->second;
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, metric("msgGap"));
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    if (m.icon) {
+        lv_obj_t* disc = flex(o, LV_FLEX_FLOW_ROW, 0);
+        lv_obj_set_size(disc, metric("msgIconBox"), metric("msgIconBox"));
+        lv_obj_set_style_radius(disc, radius("pill"), 0);
+        lv_obj_set_style_bg_color(disc, color(m.color), 0);
+        lv_obj_set_style_bg_opa(disc, opacity("tint"), 0);
+        lv_obj_set_flex_align(disc, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        icon(disc, m.icon, icon_size("message"), color(m.color));
+    }
+    if (n.contains("badge")) {
+        lv_obj_t* b = text(o, str(n, "badge"), "body", 600, m.color ? m.color : "fg1");
+        lv_obj_set_width(b, lv_pct(100));
+        lv_obj_set_style_text_align(b, LV_TEXT_ALIGN_CENTER, 0);
+    }
+    if (n.contains("body")) {
+        lv_obj_t* b = text(o, str(n, "body"), "caption", 400, "fg1");
+        lv_obj_set_width(b, metric("msgBodyW"));
+        lv_obj_set_style_text_align(b, LV_TEXT_ALIGN_CENTER, 0);
+    }
+    tag(o, {{"component", "message (" + kind + ")"},
+            {"tokens", {{"disc", "metric.msgIconBox, color." + std::string(m.color ? m.color : "none") + " @ opacity.tint"},
+                        {"badge", "type.body 600"}, {"body", "type.caption 400 / color.fg1, max metric.msgBodyW"},
+                        {"gap", "metric.msgGap"}}}});
+    return o;
+}
+
+// A quiet info panel: icon + any components beside it.
+lv_obj_t* note(lv_obj_t* parent, const json& n, const std::string& path) {
+    lv_obj_t* o = row_surface(parent, metric("bodyGap"), space("sm"));
+    lv_obj_set_height(o, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_ver(o, pt(10), 0);
+    lv_obj_set_style_bg_color(o, color("surface2"), 0);
+    lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+    if (n.contains("icon")) icon(o, str(n, "icon"), icon_size("row"), color(str(n, "icon_color", "fg1")));
+    lv_obj_t* col = grow(flex(o, LV_FLEX_FLOW_COLUMN, pt(2)));
+    lv_obj_set_height(col, LV_SIZE_CONTENT);
+    int i = 0;
+    for (const auto& child : n.value("children", json::array())) {
+        build_node(col, child, path + ".children[" + std::to_string(i++) + "]");
+    }
+    tag(o, {{"component", "note"}, {"tokens", {{"bg", "color.surface2"}, {"radius", "radius.md"}}}});
+    return o;
+}
+
+// --- Spinner: SeedSigner's rotating arc around the bitcoin mark ------------------
+
+void spin_rotation(void* arc, int32_t v) { lv_arc_set_rotation(static_cast<lv_obj_t*>(arc), v); }
+
+lv_obj_t* spin_arc(lv_obj_t* ring, const char* col, int start, int end) {
+    lv_obj_t* a = lv_arc_create(ring);
+    lv_obj_remove_style_all(a);
+    lv_obj_remove_flag(a, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(a, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_arc_opa(a, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(a, metric("spinnerStroke"), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(a, color(col), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_rounded(a, true, LV_PART_INDICATOR);
+    lv_arc_set_bg_angles(a, 0, 360);
+    lv_arc_set_angles(a, start, end);
+    lv_anim_t an;
+    lv_anim_init(&an);
+    lv_anim_set_var(&an, a);
+    lv_anim_set_exec_cb(&an, spin_rotation);
+    lv_anim_set_values(&an, 0, 360);
+    lv_anim_set_duration(&an, (uint32_t)motion_ms("spin"));
+    lv_anim_set_path_cb(&an, lv_anim_path_linear);
+    lv_anim_set_repeat_count(&an, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&an);
+    return a;
+}
+
+lv_obj_t* spinner(lv_obj_t* parent, const json& n) {
+    lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, space("md"));
+    lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(o, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t* ring = box(o);
+    lv_obj_set_size(ring, metric("spinner"), metric("spinner"));
+    // Arc lengths from the prototype's SVG: a dim trail and a bright head, rotating together.
+    spin_arc(ring, "activeDim", 0, 94);
+    spin_arc(ring, "active", 96, 156);
+    lv_obj_center(icon(ring, "bitcoin", icon_size("spinner"), color("active")));
+    if (n.contains("label")) {
+        lv_obj_t* l = text(o, str(n, "label"), "caption", 400, "fg2");
+        lv_obj_set_width(l, metric("spinnerLabelW"));
+        lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    }
+    tag(o, {{"component", "spinner"},
+            {"tokens", {{"size", "metric.spinner"}, {"stroke", "metric.spinnerStroke"},
+                        {"arcs", "color.activeDim + color.active"}, {"turn", "motion.spin"},
+                        {"label", "type.caption 400 / color.fg2"}}}});
+    return o;
+}
+
+// --- Slide to confirm: the one continuous gesture, reserved for signing ----------
+// The thumb follows the finger; release past 90% of the travel commits (the thumb
+// parks at the end, shows a check, and the action runs after motion.slideConfirm).
+// Anything less eases back over motion.slideReturn. The release position is read
+// from the input device itself, so a fast, fully committed swipe never springs back.
+
+struct Slide {
+    json node;
+    lv_obj_t *track, *wake, *hint, *thumb, *glyph;
+    int x = 0, from_px = 0, from_x = 0;
+    bool done = false;
+    lv_timer_t* confirm = nullptr;
+};
+
+constexpr float kSlideCommit = 0.9f;
+
+int slide_span(const Slide* s) {
+    return std::max(1, lv_obj_get_width(s->track) - lv_obj_get_width(s->thumb) - 2 * metric("slidePad"));
+}
+
+void slide_put(Slide* s, int x) {
+    int pad = metric("slidePad");
+    s->x = x;
+    lv_obj_set_x(s->thumb, pad + x);
+    // Orange wake behind the thumb: zero-width at rest, a solid bar when complete.
+    lv_obj_set_width(s->wake, x > 0 ? x + lv_obj_get_width(s->thumb) + 2 * pad : 0);
+    float pct = (float)x / (float)slide_span(s);
+    lv_obj_set_style_opa(s->hint, (lv_opa_t)(255 * std::max(0.0f, 1.0f - pct * 1.6f)), 0);
+}
+
+void slide_anim_x(void* thumb, int32_t v) {
+    slide_put(static_cast<Slide*>(lv_obj_get_user_data(static_cast<lv_obj_t*>(thumb))), v);
+}
+
+void slide_confirmed(lv_timer_t* t) {
+    auto* s = static_cast<Slide*>(lv_timer_get_user_data(t));
+    lv_timer_delete(t);
+    s->confirm = nullptr;
+    handle_tap(s->node);
+}
+
+int slide_finger_x() {
+    lv_point_t p;
+    lv_indev_get_point(lv_indev_active(), &p);
+    return p.x;
+}
+
+void on_slide(lv_event_t* e) {
+    auto* s = static_cast<Slide*>(lv_event_get_user_data(e));
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_DELETE) {
+        if (s->confirm) lv_timer_delete(s->confirm);
+        delete s;
+        return;
+    }
+    if (s->done) return;
+    int span = slide_span(s);
+    switch (code) {
+    case LV_EVENT_PRESSED:
+        lv_anim_delete(s->thumb, slide_anim_x);
+        s->from_px = slide_finger_x();
+        s->from_x = s->x;
+        break;
+    case LV_EVENT_PRESSING:
+        slide_put(s, std::clamp(s->from_x + slide_finger_x() - s->from_px, 0, span));
+        break;
+    case LV_EVENT_RELEASED:
+    case LV_EVENT_PRESS_LOST: {
+        slide_put(s, std::clamp(s->from_x + slide_finger_x() - s->from_px, 0, span));
+        if (s->x >= (int)(span * kSlideCommit)) {
+            s->done = true;
+            slide_put(s, span);
+            lv_label_set_text(s->glyph, utf8(kIcons.at("check")).c_str());
+            s->confirm = lv_timer_create(slide_confirmed, (uint32_t)motion_ms("slideConfirm"), s);
+        } else {
+            lv_anim_t a;
+            lv_anim_init(&a);
+            lv_anim_set_var(&a, s->thumb);
+            lv_anim_set_exec_cb(&a, slide_anim_x);
+            lv_anim_set_values(&a, s->x, 0);
+            lv_anim_set_duration(&a, (uint32_t)motion_ms("slideReturn"));
+            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+            lv_anim_start(&a);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+lv_obj_t* slide_to_confirm(lv_obj_t* parent, const json& n) {
+    int pad = metric("slidePad");
+    int thumb_px = metric("slideH") - 2 * pad;
+    auto* s = new Slide{n};
+    s->track = box(parent);
+    lv_obj_set_size(s->track, lv_pct(100), metric("slideH"));
+    lv_obj_set_style_radius(s->track, radius("md"), 0);
+    lv_obj_set_style_bg_color(s->track, color("surface"), 0);
+    lv_obj_set_style_bg_opa(s->track, LV_OPA_COVER, 0);
+
+    s->wake = box(s->track);
+    lv_obj_set_size(s->wake, 0, lv_pct(100));
+    lv_obj_set_style_radius(s->wake, radius("md"), 0);
+    lv_obj_set_style_bg_color(s->wake, color("active"), 0);
+    lv_obj_set_style_bg_opa(s->wake, LV_OPA_COVER, 0);
+
+    // Label + travel hint; fades as the thumb covers it.
+    s->hint = flex(s->track, LV_FLEX_FLOW_ROW, space("xs"));
+    lv_obj_set_size(s->hint, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_pad_left(s->hint, thumb_px, 0);
+    lv_obj_set_flex_align(s->hint, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    text(s->hint, str(n, "label", "Slide to sign"), "body", 600, "fg2");
+    lv_obj_t* chev = flex(s->hint, LV_FLEX_FLOW_ROW, pt(1));
+    lv_obj_set_size(chev, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    for (int i = 0; i < 3; ++i) icon(chev, "chevronRight", icon_size("slideChevron"), color("fg3"));
+
+    // Thumb: concentric with the track (radius.md - slidePad).
+    s->thumb = flex(s->track, LV_FLEX_FLOW_ROW, 0);
+    lv_obj_set_size(s->thumb, thumb_px, thumb_px);
+    lv_obj_set_pos(s->thumb, pad, pad);
+    lv_obj_set_style_radius(s->thumb, std::max(0, radius("md") - pad), 0);
+    lv_obj_set_style_bg_color(s->thumb, color("active"), 0);
+    lv_obj_set_style_bg_color(s->thumb, color("activePress"), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(s->thumb, LV_OPA_COVER, 0);
+    lv_obj_set_style_shadow_width(s->thumb, pt(8), 0);
+    lv_obj_set_style_shadow_offset_y(s->thumb, pt(2), 0);
+    lv_obj_set_style_shadow_opa(s->thumb, (lv_opa_t)115, 0);  // rgba(0,0,0,0.45)
+    lv_obj_set_style_shadow_color(s->thumb, lv_color_black(), 0);
+    lv_obj_set_flex_align(s->thumb, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    s->glyph = icon(s->thumb, str(n, "icon", "sign"), icon_size("slide"), color("bg"));
+    lv_obj_add_flag(s->thumb, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(s->thumb, LV_OBJ_FLAG_SCROLL_CHAIN);  // a drag here never scrolls a parent
+    lv_obj_set_user_data(s->thumb, s);
+    for (lv_event_code_t c : {LV_EVENT_PRESSED, LV_EVENT_PRESSING, LV_EVENT_RELEASED, LV_EVENT_PRESS_LOST,
+                              LV_EVENT_DELETE}) {
+        lv_obj_add_event_cb(s->thumb, on_slide, c, s);
+    }
+    tag(s->track, {{"component", "slide_to_confirm"},
+                   {"rule", "commit past 90% of the travel; otherwise ease back"},
+                   {"tokens", {{"height", "metric.slideH"}, {"pad", "metric.slidePad"}, {"track", "color.surface"},
+                               {"thumb", "color.active, radius.md - metric.slidePad"},
+                               {"motion", "motion.slideReturn / motion.slideConfirm"}}}});
+    return s->track;
 }
 
 lv_obj_t* unknown(lv_obj_t* parent, const std::string& type_name) {
@@ -542,6 +1138,17 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "group") o = stack(parent, n, path, LV_FLEX_FLOW_COLUMN);
     else if (t == "row") o = stack(parent, n, path, LV_FLEX_FLOW_ROW);
     else if (t == "spacer") o = spacer(parent, n);
+    else if (t == "btc_amount") o = btc_amount(parent, n);
+    else if (t == "address_block") o = address_block(parent, n);
+    else if (t == "tx_card") o = tx_card(parent, n, path);
+    else if (t == "summary_card") o = summary_card(parent, n);
+    else if (t == "math") o = math(parent, n);
+    else if (t == "step_rail") o = step_rail(parent, n);
+    else if (t == "pill") o = pill(parent, n);
+    else if (t == "message") o = message(parent, n);
+    else if (t == "note") o = note(parent, n, path);
+    else if (t == "spinner") o = spinner(parent, n);
+    else if (t == "slide_to_confirm") o = slide_to_confirm(parent, n);
     else o = unknown(parent, t);
     auto it = g_tags.find(o);
     if (it != g_tags.end()) it->second["path"] = path;

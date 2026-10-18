@@ -29,7 +29,7 @@ FONTS = os.path.join(REPO, "components", "seedsigner", "redesign", "fonts")
 SRC = os.path.join(FONTS, "src")
 
 ICON_RANGE = list(range(0xE900, 0xE924))                 # SS_ICON codepoints in the prototype
-MONO_RANGE = list(range(0x20, 0x7F)) + [0xB7, 0x2026]    # ASCII, middle dot, ellipsis
+MONO_RANGE = list(range(0x20, 0x7F)) + [0xB7, 0x2026, 0x2212]  # ASCII, middle dot, ellipsis, minus
 
 
 def subset_font(font, codepoints):
@@ -102,7 +102,7 @@ def main():
          "seedsigner-icons.otf, PUA U+E900-E923, CFF converted to TrueType outlines.",
          convert_cff=True)
     bake("Inconsolata-SemiBold.ttf", "rd_mono_semibold", MONO_RANGE,
-         "Inconsolata SemiBold (OFL), printable ASCII + middle dot + ellipsis.")
+         "Inconsolata SemiBold (OFL), printable ASCII + middle dot + ellipsis + minus.")
 
 
 if __name__ == "__main__":

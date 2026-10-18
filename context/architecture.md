@@ -1,6 +1,6 @@
 ---
 load_when: "code layout, prototype.json schema, the C API, the build, adding a component"
-last_verified: 2026-10-16
+last_verified: 2026-10-17
 source_refs:
   - components/seedsigner/redesign/**
   - tools/apps/web_runner/web_runner.cpp
@@ -69,8 +69,23 @@ Everything lives in `components/seedsigner/redesign/` and is additive: Classic c
 | `text` | `text`, `style` (type token), `weight`, `color` (color token), `align` |
 | `group` / `row` | `children`, `gap` (metric token); `row` makes equal columns |
 | `spacer` | `h` (points) |
+| `btc_amount` | `sats`, `style` (type token, default `hero`), `align`, `color`, `unit` (default true), `sub` (sats line, default true), `sign`, `prefix`, `prefix_color` |
+| `address_block` | `address` |
+| `tx_card` | `rows` [{`tag` (`TO`, `FEE`, `CHANGE`, …), `label`, `label_color`, `sats`, `value_color`, tap keys}]; adds the fee-share warning itself |
+| `summary_card` | `rows` [{`label`, then `sats`, `value` or `fp`, `color`}] |
+| `math` | `lines` [{`label`, `sats`, `sign`, `color`, `rule`}] |
+| `step_rail` | `steps`, `at` (0-based) |
+| `pill` | `icon`, `label`, `color` (message color token) |
+| `message` | `kind` (message type), `badge`, `body` |
+| `note` | `icon`, `icon_color`, `children` |
+| `spinner` | `label` |
+| `slide_to_confirm` | `label`, `icon`, tap keys (run on commit) |
 
-**Tap keys:** `"go": "<screen id>" | "back" | "home"`, `"snack": {"type", "label", "sublabel"}`, `"muted": true` (shows an info snack). Color and icon values are token/icon *names* (`"dire"`, `"fingerprint"`), never hex.
+`seed_row` also takes `fp_color`, `sub_color`, `trail` (a status icon instead of the chevron) and `trail_color`; `text` takes `tracking` (letter spacing, points); `cta` `kind` can be `dire`.
+
+**Tap keys:** `"go": "<screen id>" | "back" | "home"` (may use `{state}`, e.g. `"{sign_next}"`), `"set": {key: value, …}` (sets prototype state, then any `go` runs), `"snack": {"type", "label", "sublabel"}`, `"muted": true` (shows an info snack). Color and icon values are token/icon *names* (`"dire"`, `"fingerprint"`), never hex.
+
+**Screen key `auto`:** `{"ms": 1600, …tap keys}` acts like a tap after a delay, for progress screens that move on by themselves. It's cancelled when the screen changes.
 
 ## Adding a component
 
