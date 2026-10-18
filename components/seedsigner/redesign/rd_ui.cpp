@@ -976,7 +976,7 @@ struct Slide {
 constexpr float kSlideCommit = 0.9f;
 
 int slide_span(const Slide* s) {
-    return std::max(1, lv_obj_get_width(s->track) - lv_obj_get_width(s->thumb) - 2 * metric("slidePad"));
+    return std::max(1, (int)(lv_obj_get_width(s->track) - lv_obj_get_width(s->thumb)) - 2 * metric("slidePad"));
 }
 
 void slide_put(Slide* s, int x) {
