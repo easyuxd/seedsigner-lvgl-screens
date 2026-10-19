@@ -244,7 +244,7 @@ target_link_options(web_runner PRIVATE
   -fexceptions
   -O2
   "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','HEAPU8']"
-  "-sEXPORTED_FUNCTIONS=['_main','_ss_load_screen','_ss_set_resolution','_ss_set_present_rotation','_ss_set_input_mode','_ss_set_static_render','_ss_send_key','_ss_scroll','_ss_get_width','_ss_get_height','_ss_get_framebuffer','_ss_render_now','_ss_register_manifest','_ss_pack_files','_ss_stage_blob','_ss_stage_endonym','_ss_load_staged','_ss_reload','_ss_rd_start','_ss_rd_set_size','_ss_rd_load_tokens','_ss_rd_load_prototype','_ss_rd_show','_ss_rd_refresh','_ss_rd_status','_ss_rd_screen_list','_ss_rd_current','_ss_rd_inspect','_malloc','_free']"
+  "-sEXPORTED_FUNCTIONS=['_main','_ss_load_screen','_ss_set_resolution','_ss_set_present_rotation','_ss_set_input_mode','_ss_set_static_render','_ss_send_key','_ss_scroll','_ss_get_width','_ss_get_height','_ss_get_framebuffer','_ss_render_now','_ss_register_manifest','_ss_pack_files','_ss_stage_blob','_ss_stage_endonym','_ss_load_staged','_ss_reload','_ss_rd_start','_ss_rd_set_size','_ss_rd_load_tokens','_ss_rd_load_prototype','_ss_rd_show','_ss_rd_refresh','_ss_rd_status','_ss_rd_screen_list','_ss_rd_current','_ss_rd_inspect','_ss_rd_outline','_ss_set_frame_rate','_malloc','_free']"
   "--shell-file" "${CMAKE_CURRENT_LIST_DIR}/shell.html")
 
 # Force a relink when the shell changes.

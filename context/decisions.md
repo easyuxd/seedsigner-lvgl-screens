@@ -1,6 +1,6 @@
 ---
 load_when: "why something is the way it is"
-last_verified: 2026-10-17
+last_verified: 2026-10-18
 source_refs:
   - context/decisions.md
 ---
@@ -43,3 +43,12 @@ Newest last. Earlier HTML-prototype decisions (live mirror, keyboard styles, des
 | The Math's change line | `fg1` with a rule above it, not orange as in the prototype | Orange doctrine: orange is focus, selection or live input, never emphasis | 2026-10-17 |
 | Signer row status copy | "Signs this transaction" / "Not in this transaction" (prototype: "Key found in this transaction" / "Not an input of this transaction") | The prototype copy doesn't fit the 48 pt row beside the icon and status mark; shortened, not widened (content rule) | 2026-10-17 |
 | PSBT screen layout | The `review` shell anchors content to the top; the prototype centred Math and Will Send between flexible spacers | Screen types own spare height (design-system §2); a new placement rule would be a design decision | 2026-10-17 |
+| Design Studio redesign | The studio views **and** edits: canvas of every screen by flow, Design / JSON / Comments tabs, Tokens panel, comments sent to an agent in batches, version history, undo/redo, frame-rate dial. Supersedes "Inspector: read-only in PR 1". Guide: [design-studio.md](design-studio.md) | Iterate in one tool: see every screen, change it, feel it, and hand feedback to an agent without leaving the studio | 2026-10-18 |
+| Studio direction and layout | **A · Docked** and **Design + Prototype** (⇧E), chosen in `explorations/design-studio-lab.html` over B Floating, C Rail and a Workspace layout with a Play overlay; the mode switch sits right of centre, left of Undo, so it never moves | Fixed panels are calm and predictable; separate modes give the live devices the whole canvas while the panels stay useful | 2026-10-18 |
+| Studio edits | Saved straight to the JSON files through the studio server, applied to the file on disk, in the files' own formatting; tokens only for styling | The devices, the canvas and agents all read the files, so a pending "Save" step would leave them stale; tokens keep one source of styling (raw values: backlog trade-off) | 2026-10-18 |
+| Undo vs. history | ⌘Z undoes only your studio edits; every save (yours, the agent's, any outside edit) is a version, stored in `.studio/` (gitignored); agent versions carry an Agent badge | Undo never surprises you by reverting agent work; history rolls anything back or forward | 2026-10-18 |
+| Comments to agents | Saved locally and sent as a batch; the agent reads and answers them with a CLI (`studio_comments.py`) when asked to "address the Design Studio comments", so no agent has to be watching | Async and dependency-free; works with any agent | 2026-10-18 |
+| Frame-rate dial | In Prototype mode, the engine's main loop draws only N frames a second (60 / 30 / 15 / 10) | Feel a slow board in the browser, as the press-states lab did, with the real engine | 2026-10-18 |
+| Studio saves are surgical | The server parses the JSON with source spans and rewrites only the changed values' text (new values in the house style), instead of re-formatting the file | The files are hand-formatted (aligned token tables, wrapped components); a formatter that reproduces that exactly is fragile, and surgical edits keep git diffs to the lines that changed | 2026-10-18 |
+| Styling numbers in screens | Shown as "not a token" and not editable in the Design tab (tile `h`, spacer height, `tracking`); tokens are edited in the Tokens panel, which has **New** | A part can't reference a token by name yet (the C reads plain numbers), so a token picker there would be a fake; letting parts name tokens is in the backlog | 2026-10-18 |
+| Canvas pictures | One hidden engine per canvas size renders every screen to a PNG from its frame buffer, with every part's box (`ss_rd_outline`), re-rendered on each data change | 20+ live engines would be heavy; this is how the gallery already works, and it gives exact hit-testing | 2026-10-18 |

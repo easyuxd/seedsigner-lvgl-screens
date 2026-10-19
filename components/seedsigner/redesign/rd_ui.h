@@ -30,6 +30,8 @@ void clear_snack();
 void tag(lv_obj_t* obj, const nlohmann::ordered_json& info);
 void clear_tags();
 std::string inspect_at(int x, int y);
+// Every tagged object on the current screen (same records as inspect_at), for the studio canvas.
+std::string outline_all();
 
 // Provided by the prototype runtime (rd_prototype.cpp).
 void handle_tap(const nlohmann::ordered_json& node);

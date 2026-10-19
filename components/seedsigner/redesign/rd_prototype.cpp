@@ -365,6 +365,11 @@ const char* redesign_inspect(int x, int y) {
     return g_out.c_str();
 }
 
+const char* redesign_outline(void) {
+    g_out = rd::outline_all();
+    return g_out.c_str();
+}
+
 void redesign_set_listener(redesign_listener_t cb) { g_listener = cb; }
 
 }  // extern "C"

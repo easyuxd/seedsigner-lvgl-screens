@@ -31,10 +31,11 @@ Redesign is **additive**: Classic files are not edited for it, so this fork can 
 
 ## How a designer works
 
-1. Double-click **Start Design Studio.command**. The browser opens on both device sizes side by side.
-2. Ask an agent for a change, or edit `tokens.json` / `prototype.json` yourself. The studio updates by itself.
-3. Inspect anything (press **I**) to see its component, size in points and the tokens it uses.
-4. Flash a device only when you want to feel it in the hand ([devices.md](devices.md)).
+1. Double-click **Start Design Studio.command**. The browser opens on a canvas of every screen, grouped by flow.
+2. Change things in the studio (text, properties, tokens, JSON), or ask an agent, or edit `tokens.json` / `prototype.json` yourself. Everything redraws by itself, and every save is in version history.
+3. Press **⇧E** for live devices at two sizes: tap through flows, inspect anything, set a slow-board frame rate.
+4. Pin comments (**C**), send them as a batch, and later ask an agent to address them.
+5. Flash a device only when you want to feel it in the hand ([devices.md](devices.md)).
 
 Full detail: [design-studio.md](design-studio.md).
 

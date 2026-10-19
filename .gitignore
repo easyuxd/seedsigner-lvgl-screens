@@ -95,3 +95,5 @@ CLAUDE.md
 /tools/scenarios/localized/
 # Local scratch dir for review images (screenshots, montages, crops, device captures).
 review/
+# Design Studio: version history and comments, local to this Mac (context/design-studio.md)
+.studio/

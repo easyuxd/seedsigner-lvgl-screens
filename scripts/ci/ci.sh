@@ -257,7 +257,7 @@ PY
     # /redesign/ — the easyuxd Design Studio (Redesign prototype) + engine + its data.
     # Locally, the Design Studio server serves data/ live from the source folder instead.
     mkdir -p "$SITE_DIR/redesign/data"
-    cp tools/apps/web_runner/redesign/*.html "$SITE_DIR/redesign/"
+    cp tools/apps/web_runner/redesign/*.html tools/apps/web_runner/redesign/*.css tools/apps/web_runner/redesign/*.js "$SITE_DIR/redesign/"
     cp "$BUILD/index.js"   "$SITE_DIR/redesign/"
     cp "$BUILD/index.wasm" "$SITE_DIR/redesign/"
     cp components/seedsigner/redesign/tokens.json components/seedsigner/redesign/prototype.json \

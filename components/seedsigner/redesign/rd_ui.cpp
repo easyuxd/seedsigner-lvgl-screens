@@ -1122,6 +1122,8 @@ lv_obj_t* unknown(lv_obj_t* parent, const std::string& type_name) {
 // Public
 // ---------------------------------------------------------------------------
 
+static lv_obj_t* first_tagged(lv_obj_t* o);
+
 lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     std::string t = str(n, "type");
     lv_obj_t* o = nullptr;
@@ -1150,8 +1152,9 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "spinner") o = spinner(parent, n);
     else if (t == "slide_to_confirm") o = slide_to_confirm(parent, n);
     else o = unknown(parent, t);
-    auto it = g_tags.find(o);
-    if (it != g_tags.end()) it->second["path"] = path;
+    // The component's tag is usually on `o`; some (tx_card) tag an inner object instead.
+    lv_obj_t* tagged = first_tagged(o);
+    if (tagged) g_tags[tagged]["path"] = path;
     return o;
 }
 
@@ -1330,15 +1333,25 @@ static lv_obj_t* deepest_tagged(lv_obj_t* obj, const lv_point_t& p) {
     return g_tags.count(obj) ? obj : nullptr;
 }
 
-std::string inspect_at(int x, int y) {
-    lv_point_t p = {x, y};
-    lv_obj_t* hit = deepest_tagged(lv_layer_top(), p);
-    if (!hit) hit = deepest_tagged(lv_screen_active(), p);
-    if (!hit) return "{\"found\":false}";
+// `o` if it carries a component tag, else its first descendant that does and has no path yet.
+static lv_obj_t* first_tagged(lv_obj_t* o) {
+    auto it = g_tags.find(o);
+    if (it != g_tags.end() && it->second.contains("component")) return o;
+    uint32_t n = lv_obj_get_child_count(o);
+    for (uint32_t i = 0; i < n; i++) {
+        lv_obj_t* c = lv_obj_get_child(o, i);
+        auto ct = g_tags.find(c);
+        if (ct != g_tags.end() && ct->second.contains("component") && !ct->second.contains("path")) return c;
+    }
+    return nullptr;
+}
+
+// One record for a tagged object: its tags, display-pixel box, size in points, parents.
+static json describe(lv_obj_t* obj) {
     lv_area_t a;
-    lv_obj_get_coords(hit, &a);
+    lv_obj_get_coords(obj, &a);
     double s = scale();
-    json out = g_tags[hit];
+    json out = g_tags[obj];
     out["found"] = true;
     out["x"] = a.x1;
     out["y"] = a.y1;
@@ -1347,12 +1360,35 @@ std::string inspect_at(int x, int y) {
     out["w_pt"] = std::round(lv_area_get_width(&a) / s * 10.0) / 10.0;
     out["h_pt"] = std::round(lv_area_get_height(&a) / s * 10.0) / 10.0;
     json chain = json::array();
-    for (lv_obj_t* o = lv_obj_get_parent(hit); o; o = lv_obj_get_parent(o)) {
+    for (lv_obj_t* o = lv_obj_get_parent(obj); o; o = lv_obj_get_parent(o)) {
         auto it = g_tags.find(o);
         if (it != g_tags.end() && it->second.contains("component")) chain.push_back(it->second["component"]);
     }
     out["parents"] = chain;
-    return out.dump();
+    return out;
+}
+
+static void collect_tagged(lv_obj_t* obj, json& list) {
+    if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) return;
+    auto it = g_tags.find(obj);
+    if (it != g_tags.end() && it->second.contains("component")) list.push_back(describe(obj));
+    uint32_t n = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < n; i++) collect_tagged(lv_obj_get_child(obj, i), list);
+}
+
+std::string outline_all() {
+    json list = json::array();
+    collect_tagged(lv_screen_active(), list);
+    collect_tagged(lv_layer_top(), list);
+    return list.dump();
+}
+
+std::string inspect_at(int x, int y) {
+    lv_point_t p = {x, y};
+    lv_obj_t* hit = deepest_tagged(lv_layer_top(), p);
+    if (!hit) hit = deepest_tagged(lv_screen_active(), p);
+    if (!hit) return "{\"found\":false}";
+    return describe(hit).dump();
 }
 
 }  // namespace rd

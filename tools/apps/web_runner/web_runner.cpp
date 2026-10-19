@@ -417,6 +417,15 @@ EMSCRIPTEN_KEEPALIVE const char* ss_rd_status() { return redesign_status(); }
 EMSCRIPTEN_KEEPALIVE const char* ss_rd_screen_list() { return redesign_screen_list(); }
 EMSCRIPTEN_KEEPALIVE const char* ss_rd_current() { return redesign_current_path(); }
 EMSCRIPTEN_KEEPALIVE const char* ss_rd_inspect(int x, int y) { return redesign_inspect(x, y); }
+EMSCRIPTEN_KEEPALIVE const char* ss_rd_outline() { return redesign_outline(); }
+
+// Design Studio frame-rate dial: draw only `fps` frames a second, to feel a slow board.
+// 60 (or more) = every browser frame. LVGL's tick uses real elapsed time, so animations
+// keep their duration and only drop frames; input is read once per frame, like the board.
+EMSCRIPTEN_KEEPALIVE void ss_set_frame_rate(int fps) {
+    if (fps >= 60 || fps <= 0) emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
+    else emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1000 / fps);
+}
 
 }  // extern "C"
 
