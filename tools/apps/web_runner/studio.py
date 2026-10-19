@@ -12,7 +12,10 @@ What it does:
        tokens.json / prototype.json  -> "data"   (devices reload the JSON, ~instant)
                                          or "data-error" with the line and column
        C / C++ / CMake sources        -> "building", then "engine" or "build-failed"
-       studio pages (redesign/*.html) -> "page"
+       studio pages (redesign/*)      -> "page"
+       .studio/comments.json          -> "comments" (the agent answered)
+  4. Saves the studio's edits, version history and comments (/api/…, studio_store.py), so
+     the page can edit the design files. Every change to them is a version in .studio/.
 
 Standard library only.
 """
@@ -31,6 +34,8 @@ import threading
 import time
 import webbrowser
 
+import studio_store
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 BUILD = os.path.join(HERE, "build-wasm")
@@ -42,7 +47,7 @@ ENGINE_DIRS = [os.path.join(REPO, "components"), os.path.join(REPO, "tools", "ap
                os.path.join(REPO, "tools", "apps", "web_runner")]
 ENGINE_EXT = (".c", ".cpp", ".h", ".hpp", ".cmake", ".txt")
 ENGINE_FILES = [os.path.join(HERE, "shell.html"), os.path.join(HERE, "gallery.html")]  # Classic pages
-PAGE_FILES = [os.path.join(HERE, "redesign", "index.html"), os.path.join(HERE, "redesign", "device.html")]
+PAGE_FILES = [os.path.join(HERE, "redesign", f) for f in ("index.html", "studio.css", "studio.js", "device.html")]
 SKIP_DIRS = {"build-wasm", "site", ".ccache", ".emcache", "src"}
 
 clients = []
@@ -139,6 +144,7 @@ def check_json(path):
 def watch():
     data_paths = [os.path.join(DATA_SRC, f) for f in DATA_FILES]
     data, pages, engine = mtimes(data_paths), mtimes(PAGE_FILES), engine_mtimes()
+    notes = mtimes([studio_store.COMMENTS])
     while True:
         time.sleep(0.4)
         now = mtimes(data_paths)
@@ -151,6 +157,17 @@ def watch():
             else:
                 log("design data changed: devices reloading")
                 broadcast("data")
+                # A change the studio didn't write (an agent, an editor) is a version too.
+                texts = {n: studio_store.read(n) for n in studio_store.FILES}
+                if texts != studio_store.written:
+                    studio_store.written.update(texts)
+                    if studio_store.record("outside", "Changed outside the studio"):
+                        broadcast("history")
+        now = mtimes([studio_store.COMMENTS])
+        if now != notes:
+            notes = now
+            broadcast("comments")
+            broadcast("history")
         now = mtimes(PAGE_FILES)
         if now != pages:
             pages = now
@@ -196,9 +213,59 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return super().translate_path(path)
 
     def do_GET(self):
-        if self.path.split("?", 1)[0] == "/events":
+        route = self.path.split("?", 1)[0]
+        if route == "/events":
             return self.events()
+        if route == "/api/history":
+            return self.reply(studio_store.history())
+        if route.startswith("/api/history/"):
+            try:
+                return self.reply(studio_store.version_files(route.rsplit("/", 1)[1]))
+            except OSError:
+                return self.reply({"error": "No such version"}, 404)
+        if route == "/api/comments":
+            return self.reply(studio_store.comments())
         return super().do_GET()
+
+    # ---- The studio's edits, history and comments (studio_store.py) ----------
+    def reply(self, obj, code=200):
+        body = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        route = self.path.split("?", 1)[0]
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            if route == "/api/edit":
+                if body.get("file") not in studio_store.FILES:
+                    return self.reply({"error": "Unknown file"}, 400)
+                v = studio_store.edit(body["file"], body.get("ops") or [], body.get("label") or "Edit")
+                broadcast("history")
+                return self.reply({"ok": True, "version": v})
+            if route == "/api/history/name":
+                v = studio_store.name_latest((body.get("name") or "").strip() or "Named version")
+                broadcast("history")
+                return self.reply({"ok": True, "version": v})
+            if route.startswith("/api/history/") and route.endswith("/restore"):
+                v = studio_store.restore(route.split("/")[3])
+                broadcast("history")
+                return self.reply({"ok": True, "version": v})
+            if route == "/api/comments":
+                db = studio_store.comment_action(body)
+                broadcast("comments")
+                return self.reply(db)
+        except studio_store.EditError as e:
+            msg = str(e)
+            if msg == "changed":
+                msg = "This was changed outside the studio since. Use version history."
+            return self.reply({"error": msg}, 409)
+        except (ValueError, KeyError, TypeError) as e:
+            return self.reply({"error": "Bad request: %s" % e}, 400)
+        return self.reply({"error": "Not found"}, 404)
 
     def events(self):
         self.send_response(200)
@@ -267,6 +334,10 @@ def main():
         sys.exit("Build failed. The errors above say which file and line.")
     assemble_site()
 
+    # The files as they are now: a version (so the first edit can be rolled back), and the
+    # baseline that tells the watcher which later changes weren't the studio's.
+    studio_store.written.update({n: studio_store.read(n) for n in studio_store.FILES})
+    studio_store.record("outside", "Changed outside the studio" if studio_store.history() else "Starting point")
     port = free_port(args.port)
     server = Server(("127.0.0.1", port), Handler)
     threading.Thread(target=watch, daemon=True).start()

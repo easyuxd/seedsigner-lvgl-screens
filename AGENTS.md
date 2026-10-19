@@ -11,6 +11,8 @@ design studio (designers):  double-click "Start Design Studio.command"
 design studio (terminal):   bash tools/apps/web_runner/studio.sh        # builds, serves, live-reloads
 web engine only:            bash tools/apps/web_runner/build.sh         # native emsdk, Docker fallback
 redesign fonts:             python3 scripts/redesign/build_fonts.py     # needs: pip install fonttools
+studio comments (agents):   python3 tools/apps/web_runner/studio_comments.py list | reply <id> "…" | resolve <id> "…"
+studio tests:               python3 -m unittest tests/test_studio_store.py
 ```
 
 The studio prints its URL (default `http://localhost:8000/redesign/`, next free port if busy). It needs no Docker: it installs Emscripten 3.1.74 to `~/emsdk` (the version CI pins) on first run. macOS has `python3`, not `python`.
@@ -25,10 +27,21 @@ The studio prints its URL (default `http://localhost:8000/redesign/`, next free 
 - **Generated files:** `components/seedsigner/redesign/fonts/rd_*.c` come from `scripts/redesign/build_fonts.py`. Regenerate; don't hand-edit.
 - **Git:** this machine maps accounts by folder. Commit with GitButler (`but`), never `git commit`; follow `~/GitHub/AGENTS.md` if present.
 
+## Address the Design Studio comments
+
+When asked to "address the Design Studio comments" (the designer sends them in batches from the studio; see context/design-studio.md):
+
+1. `python3 tools/apps/web_runner/studio_comments.py list` prints every comment waiting for you, with its screen, part, JSON path and JSON, tokens, the thread, and a snapshot PNG (read it).
+2. Make each change in `tokens.json` / `prototype.json` (or C for a new kind of component), following the constraints above and `context/design-system.md`. Check it in the studio if it's running.
+3. For each comment: `resolve <id> "what you changed"`, or `reply <id> "your question"` if it's unclear or needs a decision (the designer's answer comes back in a later batch). Resolving badges your edits **Agent** in the studio's version history, so reply or resolve right after editing.
+
+Comments, version history and snapshots live in `.studio/` (gitignored). Never edit those files by hand; use the CLI.
+
 ## Gotchas & non-standard patterns
 
 - **Screens are data.** A Redesign screen is JSON in `prototype.json` composed from components in `rd_ui.cpp`. A new look needs a token; a new layout needs JSON; only a new *kind* of component needs C.
 - **JSON edits hot-reload (~1 s); C edits trigger an automatic ~10 s rebuild** in the studio. A broken JSON keeps the last good render and shows the line/column in the studio.
+- **The studio edits the JSON files too**, surgically (only the changed values' text), applied to the file on disk. Keep the files' hand formatting when you edit; new screens also go in a `flows` entry in `prototype.json`, or they show under Ungrouped on the canvas.
 - **LVGL only vertically centres flex children in a container with a definite height.** Single-line rows use a fixed height (`metric.rowH`), not `min_height`; see `list_item` in `rd_ui.cpp`.
 - **Taps navigate on the next LVGL cycle** (`lv_async_call`), because navigation deletes the object whose event is firing.
 - **The browser pane throttles `requestAnimationFrame` when not in front**, so automated taps need a long press (~2 s) to register. Real windows run at 60 fps.
@@ -41,8 +54,8 @@ The studio prints its URL (default `http://localhost:8000/redesign/`, next free 
 | anything (first orientation) | context/overview.md |
 | how a screen goes from JSON to pixels; what to edit where | context/README.md |
 | Redesign visuals, tokens, components, interaction, copy | context/design-system.md |
-| the Design Studio, live reload, the inspector, the designer workflow | context/design-studio.md |
-| code layout, prototype.json schema, the C API, the build, adding a component | context/architecture.md |
+| the Design Studio: canvas, editing, comments, version history, prototype mode, the designer workflow | context/design-studio.md |
+| code layout, prototype.json schema, the C API, the build, adding a component, the studio server API | context/architecture.md |
 | boards, flashing, chip revisions, setting up a new machine | context/devices.md |
 | which prototype screens are ported, what to port next | context/screen-coverage.md |
 | what's planned or deferred | context/backlog.md |

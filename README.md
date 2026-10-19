@@ -7,7 +7,7 @@ Platform-agnostic LVGL screen implementations for [SeedSigner](https://github.co
 This fork adds **Redesign**, easyuxd's portrait, touch-first SeedSigner design, as a clickable prototype running on the same LVGL engine as upstream's screens (**Classic**, unchanged). One responsive design covers the 3.5″ (320×480) and 4.3″ (480×800) ESP32-P4 boards.
 
 - **How it works (start here):** [context/README.md](context/README.md). Screens are JSON, components are C, and the browser runs the real engine.
-- **Designers:** double-click **`Start Design Studio.command`** to see every Redesign screen at both sizes in the browser, with live reload and an inspector. No Docker needed. Guide: [context/design-studio.md](context/design-studio.md).
+- **Designers:** double-click **`Start Design Studio.command`** to see, edit and prototype every Redesign screen in the browser: a canvas of every screen by flow, live devices at two sizes, editing that saves to the JSON, comments for an agent, and version history. No Docker needed. Guide: [context/design-studio.md](context/design-studio.md).
 - **Design rules:** [context/design-system.md](context/design-system.md).
 - **Agents and contributors:** start at [AGENTS.md](AGENTS.md), which routes to the rest of [`context/`](context/).
 - **Hardware and new-machine setup:** [context/devices.md](context/devices.md).

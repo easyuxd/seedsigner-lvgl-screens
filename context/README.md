@@ -1,6 +1,6 @@
 ---
 load_when: "how the Redesign and the Design Studio work, end to end"
-last_verified: 2026-10-16
+last_verified: 2026-10-18
 source_refs:
   - components/seedsigner/redesign/**
   - tools/apps/web_runner/redesign/**
@@ -37,7 +37,7 @@ prototype.json ┘     │
 
 The **same engine** runs in two places:
 
-- **In the browser.** The Design Studio runs the engine compiled to WebAssembly, once per previewed device, so you can compare boards side by side. It's the real LVGL renderer, not an imitation; what you see is what the board draws.
+- **In the browser.** The Design Studio runs the engine compiled to WebAssembly: once per previewed device in Prototype mode, so you can compare boards side by side, and once more, hidden, to draw every screen on the Design canvas. It's the real LVGL renderer, not an imitation; what you see is what the board draws.
 - **On a board.** The same C code is compiled into the firmware by the easyuxd builder fork, with `tokens.json` and `prototype.json` built in ([devices.md](devices.md)).
 
 So there's no separate "export to device" step: the browser and the board run the same code and the same JSON. Getting a change onto a board means rebuilding and reflashing the firmware (a few minutes; [devices.md](devices.md)). Iterate in the browser, and flash when you want to feel it in the hand.
@@ -46,7 +46,8 @@ So there's no separate "export to device" step: the browser and the board run th
 
 ```
 you save a file ──► studio server (studio.py) notices within ~0.4 s
-   tokens.json / prototype.json ──► checks the JSON ──► devices reload it  (~1 s)
+   tokens.json / prototype.json ──► checks the JSON ──► canvas + devices reload it  (~1 s)
+   (saved by you, the studio or an agent)               └─ recorded in version history
                                      └─ typo? red banner with file, line and column;
                                         devices keep the last good version
    any .c / .cpp / .h ────────────► rebuilds the engine ──► devices reload  (~10 s)
@@ -58,7 +59,7 @@ You never refresh the browser yourself.
 
 | I want to… | Read |
 |---|---|
-| Start the studio, compare devices, use the inspector | [design-studio.md](design-studio.md) |
+| Start the studio, edit on the canvas, comment for an agent, use version history, compare devices | [design-studio.md](design-studio.md) |
 | Know the design rules (color, type, spacing, touch, copy, responsive) | [design-system.md](design-system.md) |
 | Write or read `prototype.json`, add a component | [architecture.md](architecture.md) |
 | Set up a new Mac, or flash a board | [devices.md](devices.md) |

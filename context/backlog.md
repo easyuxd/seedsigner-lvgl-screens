@@ -1,6 +1,6 @@
 ---
 load_when: "what's planned or deferred"
-last_verified: 2026-10-17
+last_verified: 2026-10-18
 source_refs:
   - context/backlog.md
 ---
@@ -34,9 +34,26 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
 - Tabular numerals for UI-font counters; `textWrap: balance/pretty` equivalents (manual line breaks or a helper).
 - Prototype state beyond toggles and choices (e.g. adding or removing seeds), only if a flow needs it.
 
-## Studio enhancements
+## Design Studio
 
-- **Inspector v2: "Agentation meets DialKit meets Figma".** Click-to-annotate elements and hand the notes to an agent (Agentation-style); live token sliders and color pickers that write back to `tokens.json` (DialKit-style); Figma-like spacing redlines between elements and distances to the edges. Deferred until the system is stable; v1 is deliberately read-only.
+The redesign shipped (2026-10-18): a canvas of every screen by flow, Design / JSON / Comments tabs, a Tokens panel, comments sent to an agent in batches, version history with the Agent badge, undo/redo, and live devices with a frame-rate dial. Guide: [design-studio.md](design-studio.md).
+
+Deferred (the JSON tab covers both until they ship):
+
+- **Structure editing.** In Layers: drag to reorder parts, duplicate, delete, and add a part from a component library.
+- **Screens and flows.** Add, rename, duplicate and delete screens; move a screen between flows; reorder flows (the Flow field in the Design tab is read-only for now).
+
+Next:
+
+- **Parts that name a token.** Let screen JSON use a token where it now has a number (a tile's `"h": 80` → `"h": "metric.tileH"`), so the Design tab can offer a token picker with "New token…" for every size. Needs the C to resolve token names in those keys.
+
+Deliberately left out:
+
+- **Raw values in the Design tab.** Sizes and colours are picked from tokens, with "New token…" when none fits; you can't type 52 pt onto one part. Why: the design rules make `tokens.json` the only source of styling. Raw values on single parts let screens drift apart, break the shared 320 pt scaling across device sizes, and leave reviews and agents without a common name for each value. The cost is a little speed while exploring, since a new value needs a token first. Revisit if that friction shows up in practice.
+
+Other ideas:
+
+- Spacing redlines between parts, and distances to the screen edges, while inspecting.
 - More device sizes in the studio (for example, Guition JC4880P443 is the same 480×800 as the 4.3″).
 - Screenshot export of both sizes for reviews and PR descriptions.
 

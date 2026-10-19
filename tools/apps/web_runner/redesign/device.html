@@ -1,8 +1,10 @@
 <!doctype html>
 <!--
   One Redesign device: a single LVGL engine instance (index.js/.wasm) rendering the
-  prototype at one screen size (?w=&h=). The Design Studio (index.html) embeds one of
-  these per size and drives them with postMessage; see context/design-studio.md.
+  prototype at one screen size (?w=&h=). The Design Studio (index.html) embeds these
+  and drives them with postMessage; see context/design-studio.md.
+    live device (Prototype mode)  ?w=&h=&name=&path=   tap, inspect, comment, frame rate
+    snapshot engine (canvas)      ?w=&h=&snap=1        renders every screen to a picture
 -->
 <html lang="en">
 <head>
@@ -14,8 +16,8 @@
   canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; background: #000; }
   #inspect { position: absolute; inset: 0; cursor: crosshair; display: none; }
   #hl, #pin { position: absolute; pointer-events: none; display: none; box-sizing: border-box; }
-  #hl  { border: 2px solid #409CFF; background: rgba(64, 156, 255, 0.12); }
-  #pin { border: 2px dashed #FF9F0A; }
+  #hl  { box-shadow: 0 0 0 1px #409CFF; }
+  #pin { box-shadow: 0 0 0 1.5px #409CFF; }
 </style>
 </head>
 <body>
@@ -30,7 +32,8 @@
   var W = parseInt(params.get('w'), 10) || 320;
   var H = parseInt(params.get('h'), 10) || 480;
   var NAME = params.get('name') || (W + 'x' + H);
-  var api = null;
+  var SNAP = params.get('snap') === '1';
+  var api = null, mode = 'interact';
 
   var Module = {
     canvas: document.getElementById('canvas'),
@@ -47,6 +50,14 @@
     try { s = JSON.parse(api.status()); } catch (e) {}
     post('status', s);
   }
+  // Part boxes for the studio's pins and Layers. Sent a moment later, once LVGL has laid
+  // the screen out (right after a show, every box is still at 0,0).
+  var outlineTimer = 0;
+  function postOutline() {
+    if (SNAP) return;
+    clearTimeout(outlineTimer);
+    outlineTimer = setTimeout(function () { post('outline', { path: api.current(), boxes: JSON.parse(api.outline()) }); }, 150);
+  }
 
   async function fetchText(name) {
     var r = await fetch('data/' + name + '.json?_=' + Date.now(), { cache: 'no-store' });
@@ -59,6 +70,27 @@
     var texts = await Promise.all([fetchText('tokens'), fetchText('prototype')]);
     api.tokens(texts[0]);
     api.proto(texts[1]);
+  }
+
+  // Snapshot engine: render each screen and read its RGB565 frame buffer straight from the
+  // WASM heap (the WebGL canvas is never shown), plus every part's box for hit-testing.
+  var snapCanvas = null;
+  function snapAll(ids) {
+    if (!snapCanvas) { snapCanvas = document.createElement('canvas'); snapCanvas.width = W; snapCanvas.height = H; }
+    var ctx = snapCanvas.getContext('2d'), img = ctx.createImageData(W, H), d = img.data, out = {};
+    ids.forEach(function (id) {
+      api.show(id);
+      Module._ss_render_now();
+      var fb = new Uint16Array(Module.HEAPU16.buffer, Module._ss_get_framebuffer(), W * H);
+      for (var i = 0; i < W * H; i++) {
+        var v = fb[i];
+        d[i * 4] = ((v >> 11) & 31) * 255 / 31; d[i * 4 + 1] = ((v >> 5) & 63) * 255 / 63;
+        d[i * 4 + 2] = (v & 31) * 255 / 31; d[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      out[id] = { url: snapCanvas.toDataURL('image/png'), boxes: JSON.parse(api.outline()) };
+    });
+    post('snaps', { w: W, h: H, shots: out });
   }
 
   // Engine ready (called from web_runner.cpp main()).
@@ -74,20 +106,26 @@
       list:    Module.cwrap('ss_rd_screen_list', 'string', []),
       current: Module.cwrap('ss_rd_current', 'string', []),
       inspect: Module.cwrap('ss_rd_inspect', 'string', ['number', 'number']),
+      outline: Module.cwrap('ss_rd_outline', 'string', []),
+      fps:     Module.cwrap('ss_set_frame_rate', null, ['number']),
     };
     api.start();
     api.size(W, H);
     try { await loadData(); } catch (e) { post('status', { error: String(e), warnings: [] }); }
-    api.show(params.get('path') || '');
-    post('ready', { screens: JSON.parse(api.list()) });
+    if (!SNAP) api.show(params.get('path') || '');
+    post('ready', { screens: JSON.parse(api.list()), w: W, h: H });
     postStatus();
+    postOutline();
   };
 
   window.rdOnEvent = function (evt, detail) {
-    if (evt === 'navigate') { clearPin(); post('navigate', detail); setTimeout(postStatus, 0); }
+    if (evt === 'navigate' && !SNAP) {
+      clearPin(); post('navigate', detail);
+      setTimeout(function () { postStatus(); postOutline(); }, 0);
+    }
   };
 
-  // ---- Inspector ---------------------------------------------------------
+  // ---- Inspect and comment (pointer over the device) ----------------------
   var ov = document.getElementById('inspect');
   var hl = document.getElementById('hl');
   var pin = document.getElementById('pin');
@@ -98,7 +136,7 @@
              y: Math.round((ev.clientY - r.top) * H / r.height), k: r.width / W };
   }
   function place(el, info, k) {
-    if (!info.found) { el.style.display = 'none'; return; }
+    if (!info || !info.found) { el.style.display = 'none'; return; }
     el.style.display = 'block';
     el.style.left = (info.x * k) + 'px';
     el.style.top = (info.y * k) + 'px';
@@ -109,10 +147,10 @@
   function probe(ev) {
     var p = toDevice(ev);
     var info = JSON.parse(api.inspect(p.x, p.y));
-    return { info: info, k: p.k };
+    return { info: info, k: p.k, x: p.x, y: p.y };
   }
   ov.addEventListener('mousemove', function (ev) {
-    if (!api) return;
+    if (!api || mode !== 'inspect') return;
     var r = probe(ev);
     place(hl, r.info, r.k);
     post('hover', r.info);
@@ -121,6 +159,7 @@
   ov.addEventListener('click', function (ev) {
     if (!api) return;
     var r = probe(ev);
+    if (mode === 'comment') { post('pick', { x: r.x, y: r.y, info: r.info, path: api.current() }); return; }
     place(pin, r.info, r.k);
     post('select', r.info);
   });
@@ -133,13 +172,30 @@
       if (api.current() !== m.path) api.show(m.path);
     } else if (m.cmd === 'reload-data') {
       try { await loadData(); } catch (e) { post('status', { error: String(e), warnings: [] }); return; }
-      var path = api.current();
-      api.show(path);
-      post('ready', { screens: JSON.parse(api.list()) });
+      if (SNAP) { post('reloaded', {}); return; }
+      api.show(api.current());
+      post('ready', { screens: JSON.parse(api.list()), w: W, h: H });
       postStatus();
-    } else if (m.cmd === 'inspect') {
-      ov.style.display = m.on ? 'block' : 'none';
-      if (!m.on) { hl.style.display = 'none'; clearPin(); }
+      postOutline();
+    } else if (m.cmd === 'load-texts') {
+      // A version from the history, to preview it (snapshot engine).
+      api.tokens(m.tokens); api.proto(m.prototype);
+      post('reloaded', {});
+    } else if (m.cmd === 'snap') {
+      snapAll(m.ids || []);
+      postStatus();
+    } else if (m.cmd === 'mode') {
+      mode = m.mode;
+      ov.style.display = mode === 'interact' ? 'none' : 'block';
+      ov.style.cursor = mode === 'comment' ? 'copy' : 'crosshair';
+      if (mode !== 'inspect') { hl.style.display = 'none'; clearPin(); }
+    } else if (m.cmd === 'select') {
+      // The studio picked a part (Layers, canvas): show its outline here too.
+      var boxes = JSON.parse(api.outline()), b = boxes.filter(function (x) { return m.path && x.path === m.path; })[0];
+      var k = ov.getBoundingClientRect().width / W || document.getElementById('wrap').clientWidth / W;
+      place(pin, b ? Object.assign({ found: true }, b) : null, k);
+    } else if (m.cmd === 'fps') {
+      api.fps(m.fps);
     }
   });
 </script>

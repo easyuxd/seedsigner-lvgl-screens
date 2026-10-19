@@ -38,6 +38,9 @@ const char* redesign_status(void);
 const char* redesign_screen_list(void);
 // JSON description of the component under a display point (Design Studio inspector).
 const char* redesign_inspect(int x, int y);
+// JSON array: every tagged component on the current screen, same records as
+// redesign_inspect (Design Studio canvas hit-testing).
+const char* redesign_outline(void);
 
 // Host callback for events: ("navigate", path).
 typedef void (*redesign_listener_t)(const char* event, const char* detail);

@@ -10,6 +10,20 @@
     "sign_next": "psbt_signing"
   },
 
+  "_flows": "Design Studio only: groups the screens into sections on the canvas, in this order. The device ignores it. A screen in no flow shows under Ungrouped.",
+  "flows": [
+    { "id": "home", "title": "Home and seeds", "description": "Where every session starts: the seed list, one seed, adding a seed.",
+      "screens": ["home", "seeds", "seed", "add_seed"] },
+    { "id": "tools", "title": "Tools and settings", "description": "Everything off Home that isn’t a seed.",
+      "screens": ["tools", "settings", "kb_style"] },
+    { "id": "psbt_review", "title": "Sign PSBT · review", "description": "Pick the signer, then how much leaves this wallet and where it goes.",
+      "screens": ["psbt_select_seed", "psbt_overview", "psbt_math", "psbt_send_1", "psbt_send_2", "psbt_change"] },
+    { "id": "psbt_sign", "title": "Sign PSBT · sign", "description": "The one irreversible control on the device: a slide, not a tap.",
+      "screens": ["psbt_sign", "psbt_signing", "psbt_signing_fail", "psbt_error"] },
+    { "id": "psbt_alerts", "title": "Sign PSBT · warnings", "description": "Three severities, one component: warning, dire and error.",
+      "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] }
+  ],
+
   "screens": {
     "home": {
       "type": "menu_grid",
