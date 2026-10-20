@@ -41,7 +41,9 @@
     { "id": "discard", "title": "Discard seed", "description": "Wiping a seed from the device, with keeping it as the easy choice.",
       "screens": ["discard"] },
     { "id": "load_create", "title": "Load or create seed", "description": "Enter words, scan a SeedQR, or roll dice; every path ends at Finalize. Demo counts are short.",
-      "screens": ["enter_words_count", "enter_word", "new_seed_count", "new_seed_entropy", "dice", "finalize"] }
+      "screens": ["enter_words_count", "enter_word", "new_seed_count", "new_seed_entropy", "dice", "finalize"] },
+    { "id": "passphrase", "title": "Passphrase", "description": "Typing a passphrase on the keyboard chosen in Settings, then the fingerprint it leads to. The other three keyboards are pinned for comparison.",
+      "screens": ["passphrase", "passphrase_review", "kb_ladder", "kb_halo", "kb_loupe"] }
   ],
 
   "screens": {
@@ -615,6 +617,81 @@
         { "type": "cta", "label": "BIP-39 passphrase", "go": "passphrase",
           "set": { "seed_fp": "{new_fp}", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing_fail",
                    "passphrase": "" } }
+      ]
+    },
+
+    "passphrase": {
+      "type": "input",
+      "bleed": true,
+      "_note": "The keyboard is the style chosen in Settings > Keyboard. Ladder's taller tray drops the helper line.",
+      "navbar": { "title": "Passphrase", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" },
+          { "type": "text", "text": "Adds a hidden wallet on top of {seed_fp}. Optional.", "style": "caption",
+            "weight": 400, "color": "fg2", "hide_when": { "kb_style": "Ladder" } }
+        ]},
+        { "type": "group", "inset": true, "children": [
+          { "type": "cta", "label": "Next", "kind": "primary", "go": "passphrase_review",
+            "require": "passphrase", "require_label": "Type a passphrase first" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard" }
+      ]
+    },
+
+    "passphrase_review": {
+      "type": "dialog",
+      "navbar": { "title": "Confirm", "left": "back" },
+      "body": [
+        { "type": "fp_change", "state": "passphrase", "from": "{seed_fp}" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "home/seed",
+          "set": { "seed_fp": "{pp_fp}", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+        { "type": "cta", "label": "Edit passphrase", "go": "back" }
+      ]
+    },
+
+    "kb_ladder": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Ladder keyboard, pinned, to compare styles side by side.",
+      "navbar": { "title": "Passphrase", "subtitle": "Ladder", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Ladder" }
+      ]
+    },
+
+    "kb_halo": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Halo keyboard, pinned.",
+      "navbar": { "title": "Passphrase", "subtitle": "Halo", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Halo" }
+      ]
+    },
+
+    "kb_loupe": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Loupe keyboard, pinned.",
+      "navbar": { "title": "Passphrase", "subtitle": "Loupe", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Loupe" }
       ]
     }
   }
