@@ -7,7 +7,19 @@
     "kb_style": "Default",
     "persistent": true,
     "signer": "73c5da0a",
-    "sign_next": "psbt_signing"
+    "sign_next": "psbt_signing",
+    "seed_fp": "73c5da0a",
+    "seed_sub": "Single sig · Native segwit",
+    "seed_signs": "psbt_signing",
+    "new_fp": "5f1e0c3a",
+    "backup_next": "home/seed",
+    "passphrase": "",
+    "bip85_index": "",
+    "word_no": 1,
+    "word_total": 12,
+    "dice_need": 50,
+    "coordinator": "Sparrow",
+    "derivation": "m/84'/0'/0'"
   },
 
   "_flows": "Design Studio only: groups the screens into sections on the canvas, in this order. The device ignores it. A screen in no flow shows under Ungrouped.",
@@ -32,14 +44,14 @@
       "body": [
         { "type": "group", "children": [
           { "type": "section_head", "label": "Seeds", "right": "All 5", "go": "seeds" },
-          { "type": "seed_row", "fp": "73c5da0a", "go": "seed" },
-          { "type": "seed_row", "fp": "8a1f0c2b", "go": "seed" },
-          { "type": "seed_row", "fp": "d5630e9f", "go": "seed" }
+          { "type": "seed_row", "fp": "73c5da0a", "go": "seed", "set": { "seed_fp": "73c5da0a", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing" } },
+          { "type": "seed_row", "fp": "8a1f0c2b", "go": "seed", "set": { "seed_fp": "8a1f0c2b", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "d5630e9f", "go": "seed", "set": { "seed_fp": "d5630e9f", "seed_sub": "Multisig · 2-of-3", "seed_signs": "psbt_signing_fail" } }
         ]}
       ],
       "actions": [
-        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80, "go": "psbt_select_seed",
-          "_note": "Scanning isn't ported; for now Scan QR opens the PSBT flow as if a PSBT was scanned." },
+        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80, "go": "scan_psbt",
+          "_note": "There's no camera yet: the scanner simulates receiving a PSBT, then opens Select Signer." },
         { "type": "row", "children": [
           { "type": "tile", "icon": "tools", "label": "Tools", "h": 80, "go": "tools" },
           { "type": "tile", "icon": "settings", "label": "Settings", "h": 80, "go": "settings" }
@@ -52,11 +64,16 @@
       "navbar": { "title": "Seeds", "left": "back" },
       "body": [
         { "type": "group", "children": [
-          { "type": "seed_row", "fp": "73c5da0a", "sub": "Single sig · Native segwit", "go": "seed" },
-          { "type": "seed_row", "fp": "8a1f0c2b", "sub": "Single sig · + passphrase", "go": "seed" },
-          { "type": "seed_row", "fp": "d5630e9f", "sub": "Multisig · 2-of-3", "go": "seed" },
-          { "type": "seed_row", "fp": "2f9c41ab", "sub": "Single sig · Taproot", "go": "seed" },
-          { "type": "seed_row", "fp": "0b7e5d63", "sub": "Single sig · Nested segwit", "go": "seed" }
+          { "type": "seed_row", "fp": "73c5da0a", "sub": "Single sig · Native segwit", "go": "seed",
+            "set": { "seed_fp": "73c5da0a", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing" } },
+          { "type": "seed_row", "fp": "8a1f0c2b", "sub": "Single sig · + passphrase", "go": "seed",
+            "set": { "seed_fp": "8a1f0c2b", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "d5630e9f", "sub": "Multisig · 2-of-3", "go": "seed",
+            "set": { "seed_fp": "d5630e9f", "seed_sub": "Multisig · 2-of-3", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "2f9c41ab", "sub": "Single sig · Taproot", "go": "seed",
+            "set": { "seed_fp": "2f9c41ab", "seed_sub": "Single sig · Taproot", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "0b7e5d63", "sub": "Single sig · Nested segwit", "go": "seed",
+            "set": { "seed_fp": "0b7e5d63", "seed_sub": "Single sig · Nested segwit", "seed_signs": "psbt_signing_fail" } }
         ]}
       ],
       "actions": [
@@ -66,24 +83,22 @@
 
     "seed": {
       "type": "menu_list",
-      "_note": "Seed detail (object, then its actions). Every seed row opens this one demo seed.",
-      "navbar": { "title": "73c5da0a", "left": "back" },
+      "_note": "Seed detail (object, then its actions). Shows the seed in state seed_fp: a seed row sets it, and so do new seeds.",
+      "navbar": { "title": "{seed_fp}", "left": "back" },
       "body": [
-        { "type": "seed_header", "fp": "73c5da0a", "sub": "Single sig · Native segwit" },
+        { "type": "seed_header", "fp": "{seed_fp}", "sub": "{seed_sub}" },
         { "type": "group", "children": [
-          { "type": "list_item", "icon": "sign", "label": "Sign PSBT", "go": "psbt_overview",
-            "set": { "signer": "73c5da0a", "sign_next": "psbt_signing" } },
-          { "type": "list_item", "icon": "derivation", "label": "Export Xpub",
-            "snack": { "type": "info", "label": "Export Xpub", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "sign", "label": "Sign PSBT", "go": "scan_signer",
+            "set": { "signer": "{seed_fp}", "sign_next": "{seed_signs}" } },
+          { "type": "list_item", "icon": "derivation", "label": "Export Xpub", "go": "xpub_sigtype" },
           { "type": "list_item", "icon": "check", "label": "Address Explorer", "muted": true },
-          { "type": "list_item", "icon": "seeds", "label": "Backup Seed",
-            "snack": { "type": "info", "label": "Backup Seed", "sublabel": "Not ported to LVGL yet" } },
-          { "type": "list_item", "icon": "passphrase", "label": "Add passphrase",
-            "snack": { "type": "info", "label": "Add passphrase", "sublabel": "Not ported to LVGL yet" } },
-          { "type": "list_item", "icon": "derivation", "label": "BIP-85 child seed",
-            "snack": { "type": "info", "label": "BIP-85 child seed", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "seeds", "label": "Backup Seed", "go": "backup",
+            "set": { "backup_next": "home/seed" } },
+          { "type": "list_item", "icon": "passphrase", "label": "Add passphrase", "go": "passphrase",
+            "set": { "passphrase": "" } },
+          { "type": "list_item", "icon": "derivation", "label": "BIP-85 child seed", "go": "bip85_mode" },
           { "type": "list_item", "icon": "error", "icon_color": "dire", "label": "Discard seed", "chevron": false,
-            "snack": { "type": "info", "label": "Discard seed", "sublabel": "Not ported to LVGL yet" } }
+            "go": "discard" }
         ]}
       ]
     },
@@ -93,15 +108,12 @@
       "navbar": { "title": "Add Seed", "left": "back" },
       "body": [
         { "type": "section_head", "label": "Load an existing seed" },
-        { "type": "list_item", "icon": "qrcode", "label": "Scan a SeedQR", "value": "Fastest",
-          "snack": { "type": "info", "label": "Scan a SeedQR", "sublabel": "Not ported to LVGL yet" } },
-        { "type": "list_item", "icon": "seeds", "label": "Enter seed words",
-          "snack": { "type": "info", "label": "Enter seed words", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "list_item", "icon": "qrcode", "label": "Scan a SeedQR", "value": "Fastest", "go": "scan_seedqr" },
+        { "type": "list_item", "icon": "seeds", "label": "Enter seed words", "go": "enter_words_count" },
         { "type": "list_item", "icon": "microsd", "label": "Restore from microSD", "muted": true },
         { "type": "spacer", "h": 6 },
         { "type": "section_head", "label": "Or start fresh" },
-        { "type": "list_item", "icon": "plus", "label": "Create a new seed",
-          "snack": { "type": "info", "label": "Create a new seed", "sublabel": "Not ported to LVGL yet" } }
+        { "type": "list_item", "icon": "plus", "label": "Create a new seed", "go": "new_seed_count" }
       ]
     },
 
@@ -144,8 +156,7 @@
         ]}
       ],
       "actions": [
-        { "type": "cta", "label": "Try it",
-          "snack": { "type": "info", "label": "Try it", "sublabel": "Passphrase entry is not ported to LVGL yet" } }
+        { "type": "cta", "label": "Try it", "go": "passphrase", "set": { "passphrase": "" } }
       ]
     },
 
@@ -295,7 +306,7 @@
       "body": [
         { "type": "spinner", "label": "Adding signature…" }
       ],
-      "auto": { "ms": 1600, "go": "home", "snack": { "type": "info", "label": "Signed Transaction", "sublabel": "Not ported to LVGL yet" } }
+      "auto": { "ms": 1600, "go": "psbt_signed_qr" }
     },
 
     "psbt_signing_fail": {

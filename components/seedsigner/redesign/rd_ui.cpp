@@ -530,15 +530,18 @@ lv_obj_t* toggle_row(lv_obj_t* parent, const json& n) {
 }
 
 lv_obj_t* text_node(lv_obj_t* parent, const json& n) {
-    lv_obj_t* l = text(parent, str(n, "text"), str(n, "style", "body"), n.value("weight", 600),
-                       str(n, "color", "fg1"));
+    lv_obj_t* l = n.value("mono", false)
+                      ? mono(parent, str(n, "text"), str(n, "style", "body"), str(n, "color", "fg1"))
+                      : text(parent, str(n, "text"), str(n, "style", "body"), n.value("weight", 600),
+                             str(n, "color", "fg1"));
     lv_obj_set_width(l, lv_pct(100));
     if (n.contains("tracking")) lv_obj_set_style_text_letter_space(l, pt(n.at("tracking").get<float>()), 0);
     std::string align = str(n, "align", "left");
     lv_obj_set_style_text_align(l, align == "center" ? LV_TEXT_ALIGN_CENTER
                                    : align == "right" ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
     tag(l, {{"component", "text"},
-            {"tokens", {{"type", "type." + str(n, "style", "body")}, {"color", "color." + str(n, "color", "fg1")}}}});
+            {"tokens", {{"type", std::string(n.value("mono", false) ? "mono " : "") + "type." + str(n, "style", "body")},
+                        {"color", "color." + str(n, "color", "fg1")}}}});
     return l;
 }
 
@@ -546,6 +549,7 @@ lv_obj_t* stack(lv_obj_t* parent, const json& n, const std::string& path, lv_fle
     std::string gap = str(n, "gap", flow == LV_FLEX_FLOW_ROW ? "bodyGap" : "listGap");
     lv_obj_t* o = flex(parent, flow, metric(gap));
     lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    if (n.value("inset", false)) lv_obj_set_style_pad_hor(o, metric("edge"), 0);  // on a bleed screen
     int i = 0;
     for (const auto& child : n.value("children", json::array())) {
         lv_obj_t* c = build_node(o, child, path + "[" + std::to_string(i++) + "]");
@@ -559,10 +563,26 @@ lv_obj_t* stack(lv_obj_t* parent, const json& n, const std::string& path, lv_fle
     return o;
 }
 
+// "grow": true takes the spare height (h is then its minimum).
 lv_obj_t* spacer(lv_obj_t* parent, const json& n) {
     lv_obj_t* o = box(parent);
-    lv_obj_set_size(o, lv_pct(100), pt(n.value("h", 8.0f)));
+    lv_obj_set_size(o, lv_pct(100), pt(n.value("h", n.value("grow", false) ? 0.0f : 8.0f)));
+    if (n.value("grow", false)) {
+        lv_obj_set_style_min_height(o, pt(n.value("h", 0.0f)), 0);
+        lv_obj_set_flex_grow(o, 1);
+    }
     return o;
+}
+
+// A standalone icon: {"name", "size": icon token, "color": color token}.
+lv_obj_t* icon_node(lv_obj_t* parent, const json& n) {
+    lv_obj_t* wrap = flex(parent, LV_FLEX_FLOW_ROW, 0);
+    lv_obj_set_size(wrap, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(wrap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    icon(wrap, str(n, "name"), icon_size(str(n, "size", "row")), color(str(n, "color", "fg1")));
+    tag(wrap, {{"component", "icon"},
+               {"tokens", {{"size", "icon." + str(n, "size", "row")}, {"color", "color." + str(n, "color", "fg1")}}}});
+    return wrap;
 }
 
 
@@ -1239,6 +1259,16 @@ static lv_obj_t* first_tagged(lv_obj_t* o);
 lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     std::string t = str(n, "type");
     lv_obj_t* o = nullptr;
+    // "hide_when": {"kb_style": "Ladder"} leaves the part out while state matches.
+    if (n.contains("hide_when") && n.at("hide_when").is_object()) {
+        bool match = true;
+        for (auto& [k, v] : n.at("hide_when").items()) match = match && state().value(k, json()) == v;
+        if (match) {
+            o = box(parent);
+            lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+            return o;
+        }
+    }
     if (t == "section_head") o = section_head(parent, n);
     else if (t == "seed_row") o = seed_row(parent, n);
     else if (t == "seed_header") o = seed_header(parent, n);
@@ -1263,6 +1293,7 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "note") o = note(parent, n, path);
     else if (t == "spinner") o = spinner(parent, n);
     else if (t == "slide_to_confirm") o = slide_to_confirm(parent, n);
+    else if (t == "icon") o = icon_node(parent, n);
     else o = unknown(parent, t);
     // The component's tag is usually on `o`; some (tx_card) tag an inner object instead.
     lv_obj_t* tagged = first_tagged(o);
@@ -1274,7 +1305,7 @@ lv_obj_t* build_navbar(lv_obj_t* parent, const json& nav, const std::string& pat
     lv_obj_t* bar = box(parent);
     lv_obj_set_size(bar, lv_pct(100), metric("navH"));
     lv_obj_set_style_bg_color(bar, color("bg"), 0);
-    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(bar, nav.value("transparent", false) ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
 
     // Title block, centred; capped at navTitleMax (content limit: 13 characters).
     std::string subtitle = str(nav, "subtitle");
