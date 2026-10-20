@@ -35,7 +35,9 @@
     { "id": "psbt_alerts", "title": "Sign PSBT · warnings", "description": "Three severities, one component: warning, dire and error.",
       "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] },
     { "id": "qr", "title": "QR transport", "description": "The air gap: scanning in (simulated; no camera yet) and an animated QR out.",
-      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr"] }
+      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr"] },
+    { "id": "backup", "title": "Seed backup", "description": "Show the words behind a warning, then optionally check three of them.",
+      "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] }
   ],
 
   "screens": {
@@ -428,6 +430,103 @@
       ],
       "actions": [
         { "type": "qr_controls", "cta": { "label": "Done", "go": "home" } }
+      ]
+    },
+
+    "backup": {
+      "type": "menu_list",
+      "navbar": { "title": "Backup Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "View seed words", "go": "words_warning" },
+        { "type": "list_item", "icon": "qrcode", "label": "Export as SeedQR", "muted": true }
+      ]
+    },
+
+    "words_warning": {
+      "type": "dialog",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "dire", "badge": "Classified info",
+          "body": "Keep your seed words private & away from every online device." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "I understand", "kind": "primary", "go": "words_1" }
+      ]
+    },
+
+    "words_1": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "1 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 1, "words": ["forum", "undo", "fragile", "fade"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "words_2" }
+      ]
+    },
+
+    "words_2": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "2 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 5, "words": ["solar", "keen", "mirror", "roof"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "words_3" }
+      ]
+    },
+
+    "words_3": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "3 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 9, "words": ["talent", "bulk", "apart", "entire"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "backup_prompt" }
+      ]
+    },
+
+    "backup_prompt": {
+      "type": "dialog",
+      "navbar": { "title": "Verify Backup" },
+      "body": [
+        { "type": "message", "kind": "default", "badge": "Check your backup?",
+          "body": "Pick three of your words to make sure you wrote them down right. Optional." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Verify", "kind": "primary", "go": "backup_quiz_1" },
+        { "type": "cta", "label": "Skip", "go": "{backup_next}" }
+      ]
+    },
+
+    "backup_quiz_1": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #3", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 0 },
+        { "type": "word_quiz", "answer": "fragile", "choices": ["rocket", "fragile", "harvest", "pilot"],
+          "next": { "go": "backup_quiz_2" } }
+      ]
+    },
+
+    "backup_quiz_2": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #8", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 1 },
+        { "type": "word_quiz", "answer": "roof", "choices": ["cabin", "silver", "roof", "ocean"],
+          "next": { "go": "backup_quiz_3" } }
+      ]
+    },
+
+    "backup_quiz_3": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #12", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 2 },
+        { "type": "word_quiz", "answer": "entire", "choices": ["maple", "tiger", "entire", "fossil"],
+          "next": { "go": "{backup_next}", "snack": { "type": "success", "label": "Backup verified" } } }
       ]
     }
   }
