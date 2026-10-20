@@ -45,7 +45,9 @@
     { "id": "passphrase", "title": "Passphrase", "description": "Typing a passphrase on the keyboard chosen in Settings, then the fingerprint it leads to. The other three keyboards are pinned for comparison.",
       "screens": ["passphrase", "passphrase_review", "kb_ladder", "kb_halo", "kb_loupe"] },
     { "id": "xpub", "title": "Export Xpub", "description": "Signature type, script type and coordinator, a privacy warning, then the Xpub as a QR.",
-      "screens": ["xpub_sigtype", "xpub_scripttype", "xpub_coordinator", "xpub_warning", "xpub_details"] }
+      "screens": ["xpub_sigtype", "xpub_scripttype", "xpub_coordinator", "xpub_warning", "xpub_details"] },
+    { "id": "bip85", "title": "BIP-85", "description": "A child seed from an index number, typed on the numpad.",
+      "screens": ["bip85_mode", "bip85"] }
   ],
 
   "screens": {
@@ -768,6 +770,34 @@
       ],
       "actions": [
         { "type": "qr_controls", "cta": { "label": "Done", "go": "home/seed" } }
+      ]
+    },
+
+    "bip85_mode": {
+      "type": "menu_list",
+      "navbar": { "title": "BIP-85", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "bip85", "set": { "bip85_index": "" } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "bip85", "set": { "bip85_index": "" } }
+      ]
+    },
+
+    "bip85": {
+      "type": "input",
+      "bleed": true,
+      "navbar": { "title": "BIP-85 Index", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "bip85_index", "placeholder": "Index number", "max": 9 },
+          { "type": "text", "text": "Derives a new child seed from {seed_fp}.", "style": "caption", "weight": 400,
+            "color": "fg2" }
+        ]},
+        { "type": "group", "inset": true, "children": [
+          { "type": "cta", "label": "Next", "kind": "primary", "go": "finalize", "set": { "new_fp": "c4a91e27" },
+            "require": "bip85_index", "require_label": "Enter an index number first" }
+        ]},
+        { "type": "spacer", "grow": true, "h": 8 },
+        { "type": "numpad" }
       ]
     }
   }

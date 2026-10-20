@@ -1296,6 +1296,7 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "icon") o = icon_node(parent, n);
     else if (t == "text_field") o = text_field(parent, n);
     else if (t == "keyboard") o = keyboard(parent, n);
+    else if (t == "numpad") o = numpad(parent, n);
     else if (t == "word_entry") o = word_entry(parent, n);
     else if (t == "dice_pad") o = dice_pad(parent, n);
     else if (t == "qr_display") o = qr_display(parent, n);
