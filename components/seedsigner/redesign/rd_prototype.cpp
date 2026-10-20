@@ -8,6 +8,10 @@
 //   input, dialog                                     body centred, actions at the bottom
 //
 // The body scrolls when its content is taller than the screen.
+//
+// "bleed": true drops the content's edge and bottom padding, for screens whose parts
+// reach the screen edges (a docked keyboard, the scanner's camera feed). Their inset
+// parts use a group with "inset": true.
 #include "redesign.h"
 
 #include <string>
@@ -104,10 +108,11 @@ void build_screen(lv_obj_t* scr, const std::string& id, const json& def) {
     if (def.contains("navbar")) rd::build_navbar(scr, def.at("navbar"), id + ".navbar");
 
     // Content area: edge padding, fills the rest of the screen below the navbar.
+    bool bleed = def.value("bleed", false);
     lv_obj_t* content = make_column(scr, rd::metric("bodyGap"));
     lv_obj_set_flex_grow(content, 1);
-    lv_obj_set_style_pad_hor(content, rd::metric("edge"), 0);
-    lv_obj_set_style_pad_bottom(content, rd::metric("bodyBottom"), 0);
+    lv_obj_set_style_pad_hor(content, bleed ? 0 : rd::metric("edge"), 0);
+    lv_obj_set_style_pad_bottom(content, bleed ? 0 : rd::metric("bodyBottom"), 0);
 
     // Body: grows to fill, so spare height lands inside it, below (top) or around
     // (centred) its content. Scrolls if its content is taller.
@@ -142,6 +147,17 @@ void build_screen(lv_obj_t* scr, const std::string& id, const json& def) {
                       {"tokens", {{"gap", "metric.bodyGap"}, {"bottom", "metric.bodyBottom"}}}});
     }
     rd::tag(scr, {{"component", "screen"}, {"id", id}, {"screen_type", type}});
+
+    // A dialog carrying an alarming message breathes (warning, dire, error).
+    if (type == "dialog") {
+        for (const auto& node : def.value("body", json::array())) {
+            if (node.value("type", std::string()) == "message") {
+                int top = def.contains("navbar") ? rd::metric("navH") : 0;
+                rd::breathing_border(scr, node.value("kind", std::string("default")), top);
+                break;
+            }
+        }
+    }
 
     // "auto": {"ms": 1600, "go": ...} acts like a tap after a delay (a progress screen
     // moving on by itself). Any tap keys work.
@@ -196,6 +212,16 @@ void navigate(const std::string& target) {
         if (g_stack.size() > 1) g_stack.pop_back();
     } else if (target == "home") {
         g_stack.assign(1, start_id());
+    } else if (target.find('/') != std::string::npos) {
+        // A path ("home/seed") replaces the back stack, so Back walks that path.
+        g_stack.clear();
+        size_t a = 0;
+        while (a <= target.size()) {
+            size_t b = target.find('/', a);
+            if (b == std::string::npos) b = target.size();
+            if (b > a) g_stack.push_back(target.substr(a, b - a));
+            a = b + 1;
+        }
     } else {
         g_stack.push_back(target);
     }
@@ -212,6 +238,16 @@ void deferred_navigate(void* p) {
 }
 
 void deferred_refresh(void*) { render(); }
+
+// "replace": true swaps the current screen for the target, so Back skips it. For screens
+// that move on by themselves (the scanner): going Back into one would only send you
+// forward again.
+void deferred_replace(void* p) {
+    auto* target = static_cast<std::string*>(p);
+    if (g_stack.size() > 1) g_stack.pop_back();
+    navigate(*target);
+    delete target;
+}
 
 }  // namespace
 
@@ -261,9 +297,20 @@ void handle_tap(const json& node) {
         g_state[key] = !g_state.value(key, false);
         return;
     }
+    if (node.contains("require")) {
+        // A step that needs input first explains itself instead of doing nothing.
+        const json& v = g_state.value(node.at("require").get<std::string>(), json());
+        if (v.is_null() || (v.is_string() && v.get<std::string>().empty())) {
+            show_snack("info", node.value("require_label", std::string("Fill this in first")), "");
+            return;
+        }
+    }
     if (node.contains("set") && node.at("set").is_object()) {
-        // Set prototype state without re-rendering (e.g. which seed is signing).
-        for (auto& [k, v] : node.at("set").items()) g_state[k] = v;
+        // Set prototype state without re-rendering (e.g. which seed is signing). A string
+        // value may read other state: "{seed_fp}".
+        json values = json::object();
+        for (auto& [k, v] : node.at("set").items()) values[k] = v.is_string() ? json(resolve_text(v.get<std::string>())) : v;
+        for (auto& [k, v] : values.items()) g_state[k] = v;
     }
     if (node.contains("snack")) {
         const json& s = node.at("snack");
@@ -272,7 +319,8 @@ void handle_tap(const json& node) {
     }
     if (node.contains("go") && node.at("go").is_string()) {
         // "{key}" in a destination picks the screen from prototype state.
-        lv_async_call(deferred_navigate, new std::string(resolve_text(node.at("go").get<std::string>())));
+        lv_async_call(node.value("replace", false) ? deferred_replace : deferred_navigate,
+                      new std::string(resolve_text(node.at("go").get<std::string>())));
     }
 }
 
@@ -353,6 +401,7 @@ const char* redesign_screen_list(void) {
     if (g_proto_loaded) {
         for (auto& [id, def] : g_proto.at("screens").items()) {
             std::string title = def.contains("navbar") ? def.at("navbar").value("title", id) : id;
+            title = title.empty() ? id : rd::resolve_text(title);  // "{seed_fp}" reads as the seed
             list.push_back({{"id", id}, {"title", title}, {"type", def.value("type", std::string())}});
         }
     }

@@ -7,7 +7,19 @@
     "kb_style": "Default",
     "persistent": true,
     "signer": "73c5da0a",
-    "sign_next": "psbt_signing"
+    "sign_next": "psbt_signing",
+    "seed_fp": "73c5da0a",
+    "seed_sub": "Single sig · Native segwit",
+    "seed_signs": "psbt_signing",
+    "new_fp": "5f1e0c3a",
+    "backup_next": "home/seed",
+    "passphrase": "",
+    "bip85_index": "",
+    "word_no": 1,
+    "word_total": 12,
+    "dice_need": 50,
+    "coordinator": "Sparrow",
+    "derivation": "m/84'/0'/0'"
   },
 
   "_flows": "Design Studio only: groups the screens into sections on the canvas, in this order. The device ignores it. A screen in no flow shows under Ungrouped.",
@@ -21,7 +33,21 @@
     { "id": "psbt_sign", "title": "Sign PSBT · sign", "description": "The one irreversible control on the device: a slide, not a tap.",
       "screens": ["psbt_sign", "psbt_signing", "psbt_signing_fail", "psbt_error"] },
     { "id": "psbt_alerts", "title": "Sign PSBT · warnings", "description": "Three severities, one component: warning, dire and error.",
-      "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] }
+      "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] },
+    { "id": "qr", "title": "QR transport", "description": "The air gap: scanning in (simulated; no camera yet) and an animated QR out.",
+      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr", "xpub_qr"] },
+    { "id": "backup", "title": "Seed backup", "description": "Show the words behind a warning, then optionally check three of them.",
+      "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] },
+    { "id": "discard", "title": "Discard seed", "description": "Wiping a seed from the device, with keeping it as the easy choice.",
+      "screens": ["discard"] },
+    { "id": "load_create", "title": "Load or create seed", "description": "Enter words, scan a SeedQR, or roll dice; every path ends at Finalize. Demo counts are short.",
+      "screens": ["enter_words_count", "enter_word", "new_seed_count", "new_seed_entropy", "dice", "finalize"] },
+    { "id": "passphrase", "title": "Passphrase", "description": "Typing a passphrase on the keyboard chosen in Settings, then the fingerprint it leads to. The other three keyboards are pinned for comparison.",
+      "screens": ["passphrase", "passphrase_review", "kb_ladder", "kb_halo", "kb_loupe"] },
+    { "id": "xpub", "title": "Export Xpub", "description": "Signature type, script type and coordinator, a privacy warning, then the Xpub as a QR.",
+      "screens": ["xpub_sigtype", "xpub_scripttype", "xpub_coordinator", "xpub_warning", "xpub_details"] },
+    { "id": "bip85", "title": "BIP-85", "description": "A child seed from an index number, typed on the numpad.",
+      "screens": ["bip85_mode", "bip85"] }
   ],
 
   "screens": {
@@ -32,14 +58,14 @@
       "body": [
         { "type": "group", "children": [
           { "type": "section_head", "label": "Seeds", "right": "All 5", "go": "seeds" },
-          { "type": "seed_row", "fp": "73c5da0a", "go": "seed" },
-          { "type": "seed_row", "fp": "8a1f0c2b", "go": "seed" },
-          { "type": "seed_row", "fp": "d5630e9f", "go": "seed" }
+          { "type": "seed_row", "fp": "73c5da0a", "go": "seed", "set": { "seed_fp": "73c5da0a", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing" } },
+          { "type": "seed_row", "fp": "8a1f0c2b", "go": "seed", "set": { "seed_fp": "8a1f0c2b", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "d5630e9f", "go": "seed", "set": { "seed_fp": "d5630e9f", "seed_sub": "Multisig · 2-of-3", "seed_signs": "psbt_signing_fail" } }
         ]}
       ],
       "actions": [
-        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80, "go": "psbt_select_seed",
-          "_note": "Scanning isn't ported; for now Scan QR opens the PSBT flow as if a PSBT was scanned." },
+        { "type": "tile", "icon": "scan", "label": "Scan QR", "primary": true, "h": 80, "go": "scan_psbt",
+          "_note": "There's no camera yet: the scanner simulates receiving a PSBT, then opens Select Signer." },
         { "type": "row", "children": [
           { "type": "tile", "icon": "tools", "label": "Tools", "h": 80, "go": "tools" },
           { "type": "tile", "icon": "settings", "label": "Settings", "h": 80, "go": "settings" }
@@ -52,11 +78,16 @@
       "navbar": { "title": "Seeds", "left": "back" },
       "body": [
         { "type": "group", "children": [
-          { "type": "seed_row", "fp": "73c5da0a", "sub": "Single sig · Native segwit", "go": "seed" },
-          { "type": "seed_row", "fp": "8a1f0c2b", "sub": "Single sig · + passphrase", "go": "seed" },
-          { "type": "seed_row", "fp": "d5630e9f", "sub": "Multisig · 2-of-3", "go": "seed" },
-          { "type": "seed_row", "fp": "2f9c41ab", "sub": "Single sig · Taproot", "go": "seed" },
-          { "type": "seed_row", "fp": "0b7e5d63", "sub": "Single sig · Nested segwit", "go": "seed" }
+          { "type": "seed_row", "fp": "73c5da0a", "sub": "Single sig · Native segwit", "go": "seed",
+            "set": { "seed_fp": "73c5da0a", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing" } },
+          { "type": "seed_row", "fp": "8a1f0c2b", "sub": "Single sig · + passphrase", "go": "seed",
+            "set": { "seed_fp": "8a1f0c2b", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "d5630e9f", "sub": "Multisig · 2-of-3", "go": "seed",
+            "set": { "seed_fp": "d5630e9f", "seed_sub": "Multisig · 2-of-3", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "2f9c41ab", "sub": "Single sig · Taproot", "go": "seed",
+            "set": { "seed_fp": "2f9c41ab", "seed_sub": "Single sig · Taproot", "seed_signs": "psbt_signing_fail" } },
+          { "type": "seed_row", "fp": "0b7e5d63", "sub": "Single sig · Nested segwit", "go": "seed",
+            "set": { "seed_fp": "0b7e5d63", "seed_sub": "Single sig · Nested segwit", "seed_signs": "psbt_signing_fail" } }
         ]}
       ],
       "actions": [
@@ -66,24 +97,22 @@
 
     "seed": {
       "type": "menu_list",
-      "_note": "Seed detail (object, then its actions). Every seed row opens this one demo seed.",
-      "navbar": { "title": "73c5da0a", "left": "back" },
+      "_note": "Seed detail (object, then its actions). Shows the seed in state seed_fp: a seed row sets it, and so do new seeds.",
+      "navbar": { "title": "{seed_fp}", "left": "back" },
       "body": [
-        { "type": "seed_header", "fp": "73c5da0a", "sub": "Single sig · Native segwit" },
+        { "type": "seed_header", "fp": "{seed_fp}", "sub": "{seed_sub}" },
         { "type": "group", "children": [
-          { "type": "list_item", "icon": "sign", "label": "Sign PSBT", "go": "psbt_overview",
-            "set": { "signer": "73c5da0a", "sign_next": "psbt_signing" } },
-          { "type": "list_item", "icon": "derivation", "label": "Export Xpub",
-            "snack": { "type": "info", "label": "Export Xpub", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "sign", "label": "Sign PSBT", "go": "scan_signer",
+            "set": { "signer": "{seed_fp}", "sign_next": "{seed_signs}" } },
+          { "type": "list_item", "icon": "derivation", "label": "Export Xpub", "go": "xpub_sigtype" },
           { "type": "list_item", "icon": "check", "label": "Address Explorer", "muted": true },
-          { "type": "list_item", "icon": "seeds", "label": "Backup Seed",
-            "snack": { "type": "info", "label": "Backup Seed", "sublabel": "Not ported to LVGL yet" } },
-          { "type": "list_item", "icon": "passphrase", "label": "Add passphrase",
-            "snack": { "type": "info", "label": "Add passphrase", "sublabel": "Not ported to LVGL yet" } },
-          { "type": "list_item", "icon": "derivation", "label": "BIP-85 child seed",
-            "snack": { "type": "info", "label": "BIP-85 child seed", "sublabel": "Not ported to LVGL yet" } },
+          { "type": "list_item", "icon": "seeds", "label": "Backup Seed", "go": "backup",
+            "set": { "backup_next": "home/seed" } },
+          { "type": "list_item", "icon": "passphrase", "label": "Add passphrase", "go": "passphrase",
+            "set": { "passphrase": "" } },
+          { "type": "list_item", "icon": "derivation", "label": "BIP-85 child seed", "go": "bip85_mode" },
           { "type": "list_item", "icon": "error", "icon_color": "dire", "label": "Discard seed", "chevron": false,
-            "snack": { "type": "info", "label": "Discard seed", "sublabel": "Not ported to LVGL yet" } }
+            "go": "discard" }
         ]}
       ]
     },
@@ -93,15 +122,12 @@
       "navbar": { "title": "Add Seed", "left": "back" },
       "body": [
         { "type": "section_head", "label": "Load an existing seed" },
-        { "type": "list_item", "icon": "qrcode", "label": "Scan a SeedQR", "value": "Fastest",
-          "snack": { "type": "info", "label": "Scan a SeedQR", "sublabel": "Not ported to LVGL yet" } },
-        { "type": "list_item", "icon": "seeds", "label": "Enter seed words",
-          "snack": { "type": "info", "label": "Enter seed words", "sublabel": "Not ported to LVGL yet" } },
+        { "type": "list_item", "icon": "qrcode", "label": "Scan a SeedQR", "value": "Fastest", "go": "scan_seedqr" },
+        { "type": "list_item", "icon": "seeds", "label": "Enter seed words", "go": "enter_words_count" },
         { "type": "list_item", "icon": "microsd", "label": "Restore from microSD", "muted": true },
         { "type": "spacer", "h": 6 },
         { "type": "section_head", "label": "Or start fresh" },
-        { "type": "list_item", "icon": "plus", "label": "Create a new seed",
-          "snack": { "type": "info", "label": "Create a new seed", "sublabel": "Not ported to LVGL yet" } }
+        { "type": "list_item", "icon": "plus", "label": "Create a new seed", "go": "new_seed_count" }
       ]
     },
 
@@ -144,8 +170,7 @@
         ]}
       ],
       "actions": [
-        { "type": "cta", "label": "Try it",
-          "snack": { "type": "info", "label": "Try it", "sublabel": "Passphrase entry is not ported to LVGL yet" } }
+        { "type": "cta", "label": "Try it", "go": "passphrase", "set": { "passphrase": "" } }
       ]
     },
 
@@ -189,7 +214,7 @@
       "body": [
         { "type": "step_rail", "steps": 5, "at": 0 },
         { "type": "group", "children": [
-          { "type": "text", "text": "SENDING", "style": "micro", "color": "fg2", "align": "center", "tracking": 1.6 },
+          { "type": "text", "text": "SENDING", "style": "micro", "weight": 700, "color": "fg2", "align": "center", "tracking": 1.6 },
           { "type": "btc_amount", "sats": 2453100, "style": "display", "align": "center" }
         ]},
         { "type": "tx_card", "rows": [
@@ -295,7 +320,7 @@
       "body": [
         { "type": "spinner", "label": "Adding signature…" }
       ],
-      "auto": { "ms": 1600, "go": "home", "snack": { "type": "info", "label": "Signed Transaction", "sublabel": "Not ported to LVGL yet" } }
+      "auto": { "ms": 1600, "go": "psbt_signed_qr" }
     },
 
     "psbt_signing_fail": {
@@ -356,6 +381,423 @@
       ],
       "actions": [
         { "type": "cta", "label": "Discard transaction", "kind": "dire", "go": "home" }
+      ]
+    },
+
+    "scan_psbt": {
+      "type": "input",
+      "bleed": true,
+      "_note": "QR transport IN (prototype qr.jsx ScanScreen). No camera yet: frames arrive, it says received, then hands off. A tap skips ahead.",
+      "body": [
+        { "type": "scanner", "label": "transaction", "done": "Transaction received", "total": 24,
+          "next": { "go": "psbt_select_seed", "replace": true } }
+      ]
+    },
+
+    "scan_signer": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Sign PSBT from a seed: the signer is already chosen, so the scan goes straight to Review.",
+      "body": [
+        { "type": "scanner", "label": "transaction", "done": "Transaction received", "total": 24,
+          "next": { "go": "psbt_overview", "replace": true } }
+      ]
+    },
+
+    "scan_seedqr": {
+      "type": "input",
+      "bleed": true,
+      "body": [
+        { "type": "scanner", "label": "SeedQR", "done": "Seed loaded", "total": 1,
+          "next": { "go": "finalize", "replace": true, "set": { "new_fp": "e3b0c442" } } }
+      ]
+    },
+
+    "scan_idle": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the plain viewfinder, pinned. In use it gives up after a few seconds (motion.scanGiveUp) and shows Unrecognized.",
+      "body": [
+        { "type": "scanner", "phase": "idle" }
+      ]
+    },
+
+    "scan_unrecognized": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the unrecognized-code state, pinned.",
+      "body": [
+        { "type": "scanner", "phase": "unrecognized" }
+      ]
+    },
+
+    "psbt_signed_qr": {
+      "type": "review",
+      "_note": "QR transport OUT (prototype qr.jsx QRDisplayScreen): the signed PSBT as an animated QR. No back: signing is done, Done leaves.",
+      "navbar": { "title": "Signed Transaction", "subtitle": "Scan with your coordinator" },
+      "body": [
+        { "type": "qr_display", "frames": 12 }
+      ],
+      "actions": [
+        { "type": "qr_controls", "cta": { "label": "Done", "go": "home" } }
+      ]
+    },
+
+    "backup": {
+      "type": "menu_list",
+      "navbar": { "title": "Backup Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "View seed words", "go": "words_warning" },
+        { "type": "list_item", "icon": "qrcode", "label": "Export as SeedQR", "muted": true }
+      ]
+    },
+
+    "words_warning": {
+      "type": "dialog",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "dire", "badge": "Classified info",
+          "body": "Keep your seed words private & away from every online device." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "I understand", "kind": "primary", "go": "words_1" }
+      ]
+    },
+
+    "words_1": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "1 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 1, "words": ["forum", "undo", "fragile", "fade"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "words_2" }
+      ]
+    },
+
+    "words_2": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "2 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 5, "words": ["solar", "keen", "mirror", "roof"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Next", "kind": "primary", "go": "words_3" }
+      ]
+    },
+
+    "words_3": {
+      "type": "review",
+      "navbar": { "title": "Seed Words", "subtitle": "3 of 3", "left": "back" },
+      "body": [
+        { "type": "word_list", "from": 9, "words": ["talent", "bulk", "apart", "entire"] }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "backup_prompt" }
+      ]
+    },
+
+    "backup_prompt": {
+      "type": "dialog",
+      "navbar": { "title": "Verify Backup" },
+      "body": [
+        { "type": "message", "kind": "default", "badge": "Check your backup?",
+          "body": "Pick three of your words to make sure you wrote them down right. Optional." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Verify", "kind": "primary", "go": "backup_quiz_1" },
+        { "type": "cta", "label": "Skip", "go": "{backup_next}" }
+      ]
+    },
+
+    "backup_quiz_1": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #3", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 0 },
+        { "type": "word_quiz", "answer": "fragile", "choices": ["rocket", "fragile", "harvest", "pilot"],
+          "next": { "go": "backup_quiz_2" } }
+      ]
+    },
+
+    "backup_quiz_2": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #8", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 1 },
+        { "type": "word_quiz", "answer": "roof", "choices": ["cabin", "silver", "roof", "ocean"],
+          "next": { "go": "backup_quiz_3" } }
+      ]
+    },
+
+    "backup_quiz_3": {
+      "type": "review",
+      "navbar": { "title": "Verify Word #12", "left": "back" },
+      "body": [
+        { "type": "step_rail", "steps": 3, "at": 2 },
+        { "type": "word_quiz", "answer": "entire", "choices": ["maple", "tiger", "entire", "fossil"],
+          "next": { "go": "{backup_next}", "snack": { "type": "success", "label": "Backup verified" } } }
+      ]
+    },
+
+    "discard": {
+      "type": "dialog",
+      "_note": "The seed leaves the device. The demo list stays as it is (prototype state beyond toggles is in the backlog).",
+      "navbar": { "title": "Discard", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Discard seed?",
+          "body": "Wipe seed {seed_fp} from this device? Without a backup, it's gone." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Keep seed", "kind": "primary", "go": "back" },
+        { "type": "cta", "label": "Discard", "kind": "dire", "go": "home",
+          "snack": { "type": "success", "label": "Seed {seed_fp} discarded", "sublabel": "Demo: the seed list doesn't change" } }
+      ]
+    },
+
+    "enter_words_count": {
+      "type": "menu_list",
+      "navbar": { "title": "Seed Words", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "enter_word",
+          "set": { "word_no": 1, "word_total": 12 } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "enter_word",
+          "set": { "word_no": 1, "word_total": 24 } }
+      ]
+    },
+
+    "enter_word": {
+      "type": "input",
+      "_note": "Demo: three words, then the seed loads. A real seed has 12 or 24 (backlog).",
+      "navbar": { "title": "Word {word_no} of 3", "subtitle": "Demo · a real seed has {word_total}", "left": "back" },
+      "body": [
+        { "type": "word_entry", "words": 3, "next": { "go": "finalize", "set": { "new_fp": "9d72a3f1" } } }
+      ]
+    },
+
+    "new_seed_count": {
+      "type": "menu_list",
+      "navbar": { "title": "Create Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "new_seed_entropy",
+          "set": { "dice_need": 50 } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "new_seed_entropy",
+          "set": { "dice_need": 99 } }
+      ]
+    },
+
+    "new_seed_entropy": {
+      "type": "menu_list",
+      "navbar": { "title": "Create Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "derivation", "label": "Roll dice", "value": "Recommended", "go": "dice" },
+        { "type": "list_item", "icon": "scan", "label": "Image entropy", "muted": true }
+      ]
+    },
+
+    "dice": {
+      "type": "input",
+      "_note": "Demo: six rolls. A real seed needs 50 (12 words) or 99 (24 words) (backlog).",
+      "navbar": { "title": "Roll Dice", "subtitle": "Demo · a real seed needs {dice_need}", "left": "back" },
+      "body": [
+        { "type": "dice_pad", "rolls": 6,
+          "next": { "go": "words_warning", "set": { "new_fp": "5f1e0c3a", "backup_next": "finalize" } } }
+      ]
+    },
+
+    "finalize": {
+      "type": "dialog",
+      "navbar": { "title": "Finalize Seed" },
+      "body": [
+        { "type": "icon", "name": "fingerprint", "size": "finalize" },
+        { "type": "group", "gap": "railGap", "children": [
+          { "type": "text", "text": "fingerprint", "style": "caption", "color": "fg2", "align": "center" },
+          { "type": "text", "text": "{new_fp}", "mono": true, "style": "hero", "align": "center" }
+        ]}
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "home/seed",
+          "set": { "seed_fp": "{new_fp}", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing_fail" } },
+        { "type": "cta", "label": "BIP-39 passphrase", "go": "passphrase",
+          "set": { "seed_fp": "{new_fp}", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing_fail",
+                   "passphrase": "" } }
+      ]
+    },
+
+    "passphrase": {
+      "type": "input",
+      "bleed": true,
+      "_note": "The keyboard is the style chosen in Settings > Keyboard. Ladder's taller tray drops the helper line.",
+      "navbar": { "title": "Passphrase", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" },
+          { "type": "text", "text": "Adds a hidden wallet on top of {seed_fp}. Optional.", "style": "caption",
+            "weight": 400, "color": "fg2", "hide_when": { "kb_style": "Ladder" } }
+        ]},
+        { "type": "group", "inset": true, "children": [
+          { "type": "cta", "label": "Next", "kind": "primary", "go": "passphrase_review",
+            "require": "passphrase", "require_label": "Type a passphrase first" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard" }
+      ]
+    },
+
+    "passphrase_review": {
+      "type": "dialog",
+      "navbar": { "title": "Confirm", "left": "back" },
+      "body": [
+        { "type": "fp_change", "state": "passphrase", "from": "{seed_fp}" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "home/seed",
+          "set": { "seed_fp": "{pp_fp}", "seed_sub": "Single sig · + passphrase", "seed_signs": "psbt_signing_fail" } },
+        { "type": "cta", "label": "Edit passphrase", "go": "back" }
+      ]
+    },
+
+    "kb_ladder": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Ladder keyboard, pinned, to compare styles side by side.",
+      "navbar": { "title": "Passphrase", "subtitle": "Ladder", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Ladder" }
+      ]
+    },
+
+    "kb_halo": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Halo keyboard, pinned.",
+      "navbar": { "title": "Passphrase", "subtitle": "Halo", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Halo" }
+      ]
+    },
+
+    "kb_loupe": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the Loupe keyboard, pinned.",
+      "navbar": { "title": "Passphrase", "subtitle": "Loupe", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "passphrase", "placeholder": "Type passphrase" }
+        ]},
+        { "type": "spacer", "grow": true },
+        { "type": "keyboard", "style": "Loupe" }
+      ]
+    },
+
+    "xpub_sigtype": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "sign", "label": "Single sig", "go": "xpub_scripttype" },
+        { "type": "list_item", "icon": "sign", "label": "Multisig", "go": "xpub_scripttype" }
+      ]
+    },
+
+    "xpub_scripttype": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "derivation", "label": "Native Segwit", "go": "xpub_coordinator",
+          "set": { "derivation": "m/84'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Nested Segwit", "go": "xpub_coordinator",
+          "set": { "derivation": "m/49'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Legacy", "go": "xpub_coordinator",
+          "set": { "derivation": "m/44'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Taproot", "go": "xpub_coordinator",
+          "set": { "derivation": "m/86'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Custom Derivation", "muted": true }
+      ]
+    },
+
+    "xpub_coordinator": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "bitcoin", "label": "BlueWallet", "go": "xpub_warning", "set": { "coordinator": "BlueWallet" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Nunchuk", "go": "xpub_warning", "set": { "coordinator": "Nunchuk" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Sparrow", "go": "xpub_warning", "set": { "coordinator": "Sparrow" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Specter Desktop", "go": "xpub_warning",
+          "set": { "coordinator": "Specter Desktop" } }
+      ]
+    },
+
+    "xpub_warning": {
+      "type": "dialog",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Privacy leak",
+          "body": "An Xpub can be used to view all of this wallet's future transactions." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "I understand", "kind": "primary", "go": "xpub_details" }
+      ]
+    },
+
+    "xpub_details": {
+      "type": "review",
+      "navbar": { "title": "Xpub Details", "left": "back" },
+      "body": [
+        { "type": "info_card", "icon": "fingerprint", "label": "Fingerprint", "value": "{seed_fp}", "mono": true },
+        { "type": "info_card", "icon": "derivation", "label": "Derivation", "value": "{derivation}", "mono": true },
+        { "type": "info_card", "icon": "qrcode", "label": "Xpub", "mono": true, "style": "caption",
+          "value": "zpub6rGMo73c5Uv5Ck4csPwB5VPFkN3vGjPXmDLBFMxqZW…" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Export Xpub", "kind": "primary", "go": "xpub_qr" }
+      ]
+    },
+
+    "xpub_qr": {
+      "type": "review",
+      "navbar": { "title": "Xpub", "subtitle": "Scan with {coordinator}", "left": "back" },
+      "body": [
+        { "type": "qr_display", "frames": 1, "note": "zpub6rGMo73c5Uv5Ck4csPwB5VPFkN3vGjPXmDLBFMxqZW…" }
+      ],
+      "actions": [
+        { "type": "qr_controls", "cta": { "label": "Done", "go": "home/seed" } }
+      ]
+    },
+
+    "bip85_mode": {
+      "type": "menu_list",
+      "navbar": { "title": "BIP-85", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "bip85", "set": { "bip85_index": "" } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "bip85", "set": { "bip85_index": "" } }
+      ]
+    },
+
+    "bip85": {
+      "type": "input",
+      "bleed": true,
+      "navbar": { "title": "BIP-85 Index", "left": "back" },
+      "body": [
+        { "type": "group", "inset": true, "children": [
+          { "type": "text_field", "state": "bip85_index", "placeholder": "Index number", "max": 9 },
+          { "type": "text", "text": "Derives a new child seed from {seed_fp}.", "style": "caption", "weight": 400,
+            "color": "fg2" }
+        ]},
+        { "type": "group", "inset": true, "children": [
+          { "type": "cta", "label": "Next", "kind": "primary", "go": "finalize", "set": { "new_fp": "c4a91e27" },
+            "require": "bip85_index", "require_label": "Enter an index number first" }
+        ]},
+        { "type": "spacer", "grow": true, "h": 8 },
+        { "type": "numpad" }
       ]
     }
   }

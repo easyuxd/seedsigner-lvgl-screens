@@ -3,6 +3,13 @@
 // filesystem. Hosts that load JSON themselves (the Design Studio) don't call this.
 #include "redesign.h"
 
+#include "lvgl.h"
+
+// Touch is read every this many ms on a board (LVGL's default follows the 33 ms refresh
+// period). A drag sampled 3x as often tracks the finger closely, which is what makes
+// the slide to sign feel reliable; a touch read is a short I2C transfer.
+static const uint32_t kTouchReadMs = 10;
+
 static const char kTokens[] =
 #include "rd_tokens_json.inc"
 ;
@@ -12,5 +19,9 @@ static const char kPrototype[] =
 
 extern "C" int redesign_start_embedded(void) {
     if (!redesign_load_tokens(kTokens) || !redesign_load_prototype(kPrototype)) return 0;
+    for (lv_indev_t* i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i)) {
+        lv_timer_t* t = lv_indev_get_read_timer(i);
+        if (t && lv_indev_get_type(i) == LV_INDEV_TYPE_POINTER) lv_timer_set_period(t, kTouchReadMs);
+    }
     return redesign_show("");
 }

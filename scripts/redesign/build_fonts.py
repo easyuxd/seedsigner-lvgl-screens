@@ -2,14 +2,16 @@
 """Bake the Redesign's runtime fonts into C arrays (components/seedsigner/redesign/fonts/).
 
 LVGL's tiny_ttf (stb_truetype) rasterizes TrueType outlines at any pixel size, which is
-what lets the Redesign scale its type with the screen. Two sources need preparing:
+what lets the Redesign scale its type with the screen. Three sources need preparing:
 
   - seedsigner-icons.otf  is CFF (cubic) outlines, which stb_truetype cannot read, so the
                           PUA icon range is converted to TrueType (quadratic) outlines.
   - Inconsolata-SemiBold  is subset to printable ASCII + the few symbols the UI uses.
+  - OpenSans-Bold         is subset to the same Western blocks as the engine's Open Sans.
 
-Open Sans is NOT baked here: the Redesign reuses the engine's compiled-in OpenSans Western
-subsets (components/seedsigner/fonts/opensans_western_*.c).
+Open Sans Regular and SemiBold are NOT baked here: the Redesign reuses the engine's
+compiled-in OpenSans Western subsets (components/seedsigner/fonts/opensans_western_*.c).
+Bold (700) is Redesign-only, so it lives here and Classic is untouched.
 
 Run after changing a source font in components/seedsigner/redesign/fonts/src/:
 
@@ -29,7 +31,11 @@ FONTS = os.path.join(REPO, "components", "seedsigner", "redesign", "fonts")
 SRC = os.path.join(FONTS, "src")
 
 ICON_RANGE = list(range(0xE900, 0xE924))                 # SS_ICON codepoints in the prototype
-MONO_RANGE = list(range(0x20, 0x7F)) + [0xB7, 0x2026, 0x2212]  # ASCII, middle dot, ellipsis, minus
+# ASCII, middle dot, ellipsis, minus; the keyboard's £ ¥ € • and the passphrase review's →
+MONO_RANGE = list(range(0x20, 0x7F)) + [0xA3, 0xA5, 0xB7, 0x2022, 0x2026, 0x20AC, 0x2192, 0x2212]
+# The engine's Open Sans Western subset: ASCII, Latin-1, Latin Extended-A, General Punctuation.
+WESTERN_RANGE = (list(range(0x20, 0x7F)) + list(range(0xA0, 0x180)) +
+                 list(range(0x2000, 0x2070)))
 
 
 def subset_font(font, codepoints):
@@ -102,7 +108,9 @@ def main():
          "seedsigner-icons.otf, PUA U+E900-E923, CFF converted to TrueType outlines.",
          convert_cff=True)
     bake("Inconsolata-SemiBold.ttf", "rd_mono_semibold", MONO_RANGE,
-         "Inconsolata SemiBold (OFL), printable ASCII + middle dot + ellipsis + minus.")
+         "Inconsolata SemiBold (OFL), printable ASCII + middle dot + ellipsis + minus + £ ¥ € • →.")
+    bake("OpenSans-Bold.ttf", "rd_ui_bold", WESTERN_RANGE,
+         "Open Sans Bold 3.003 (OFL), Western Latin + General Punctuation, like opensans_western_*.c.")
 
 
 if __name__ == "__main__":

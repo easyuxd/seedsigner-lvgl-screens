@@ -1,10 +1,13 @@
 #include "rd_ui.h"
 
+#include "rd_kit.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <unordered_map>
+#include <vector>
 
 #include "rd_tokens.h"
 
@@ -44,7 +47,12 @@ std::string utf8(uint32_t cp) {
     return s;
 }
 
-// A bare container: no theme styles, not scrollable, not clickable.
+}  // namespace
+
+// ---------------------------------------------------------------------------
+// The kit (rd_kit.h): shared with the components in rd_input/rd_qr/rd_seed.cpp.
+// ---------------------------------------------------------------------------
+
 lv_obj_t* box(lv_obj_t* parent) {
     lv_obj_t* o = lv_obj_create(parent);
     lv_obj_remove_style_all(o);
@@ -82,6 +90,11 @@ lv_obj_t* mono(lv_obj_t* parent, const std::string& str, const std::string& type
     return l;
 }
 
+std::string icon_text(const std::string& name) {
+    auto it = kIcons.find(name);
+    return it == kIcons.end() ? std::string() : utf8(it->second);
+}
+
 lv_obj_t* icon(lv_obj_t* parent, const std::string& name, int px, lv_color_t c) {
     lv_obj_t* l = lv_label_create(parent);
     auto it = kIcons.find(name);
@@ -95,6 +108,8 @@ lv_obj_t* icon(lv_obj_t* parent, const std::string& name, int px, lv_color_t c) 
     lv_obj_set_style_text_color(l, c, 0);
     return l;
 }
+
+namespace {
 
 // ---------------------------------------------------------------------------
 // Press: the prototype's <Press>, tuned for slow boards (design-system §6).
@@ -184,10 +199,12 @@ void on_tap_event(lv_event_t* e) {
     else handle_tap(tap->node);
 }
 
+}  // namespace
+
 // Make obj pressable. bg / bg_press are color token names ("" = transparent at rest).
 // `node` is the JSON whose "go"/"snack"/"muted" decide what a tap does.
 void pressable(lv_obj_t* obj, const std::string& bg, const std::string& bg_press,
-               const json& node, int claim_px = 0) {
+               const json& node, int claim_px) {
     lv_style_transition_dsc_init(&g_press_in, kPressInProps, lv_anim_path_ease_out,
                                  (uint32_t)motion_value("press", "inMs", 0), 0, nullptr);
     lv_style_transition_dsc_init(&g_press_out, kPressOutProps, lv_anim_path_ease_out,
@@ -234,6 +251,27 @@ lv_obj_t* grow(lv_obj_t* o) {
     return o;
 }
 
+std::string str(const json& n, const char* key, const std::string& fallback) {
+    return n.contains(key) && n.at(key).is_string() ? n.at(key).get<std::string>() : fallback;
+}
+
+std::string msg_color(const std::string& kind) {
+    auto it = kMsg.find(kind);
+    return it != kMsg.end() && it->second.color ? it->second.color : "";
+}
+
+lv_obj_t* card(lv_obj_t* parent) {
+    lv_obj_t* c = flex(parent, LV_FLEX_FLOW_COLUMN, 0);
+    lv_obj_set_size(c, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(c, radius("md"), 0);
+    lv_obj_set_style_clip_corner(c, true, 0);
+    lv_obj_set_style_bg_color(c, color("surface"), 0);
+    lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
+    return c;
+}
+
+namespace {
+
 // Dashed outline (LVGL has no dashed border): straight dashed edges + solid corners.
 void draw_dashed_border(lv_event_t* e) {
     lv_obj_t* obj = lv_event_get_target_obj(e);
@@ -274,10 +312,6 @@ void draw_dashed_border(lv_event_t* e) {
     arc(a.x1 + r, a.y2 - r, 90);
     arc(a.x1 + r, a.y1 + r, 180);
     arc(a.x2 - r, a.y1 + r, 270);
-}
-
-std::string str(const json& n, const char* key, const std::string& fallback = "") {
-    return n.contains(key) && n.at(key).is_string() ? n.at(key).get<std::string>() : fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -415,7 +449,7 @@ lv_obj_t* cta(lv_obj_t* parent, const json& n) {
     lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     if (str(n, "kind") == "dire") {
         // Funds-at-risk action: a dire outline on a grey button, never an orange one.
-        text(o, str(n, "label"), "button", 600, "dire");
+        text(o, str(n, "label"), "button", 700, "dire");
         pressable(o, "surface", "surfacePress", n);
         lv_obj_set_style_border_width(o, metric("direBorder"), 0);
         lv_obj_set_style_border_color(o, color("dire"), 0);
@@ -424,7 +458,7 @@ lv_obj_t* cta(lv_obj_t* parent, const json& n) {
                                   LV_STATE_PRESSED);
         tag(o, {{"component", "cta (dire)"},
                 {"tokens", {{"bg", "color.surface"}, {"border", "metric.direBorder / color.dire @ opacity.direBorder"},
-                            {"press", "color.dire @ opacity.direPress"}, {"label", "type.button 600 / color.dire"}}}});
+                            {"press", "color.dire @ opacity.direPress"}, {"label", "type.button 700 / color.dire"}}}});
         return o;
     }
     text(o, str(n, "label"), "button", 600, primary ? "bg" : "fg1");
@@ -496,15 +530,18 @@ lv_obj_t* toggle_row(lv_obj_t* parent, const json& n) {
 }
 
 lv_obj_t* text_node(lv_obj_t* parent, const json& n) {
-    lv_obj_t* l = text(parent, str(n, "text"), str(n, "style", "body"), n.value("weight", 600),
-                       str(n, "color", "fg1"));
+    lv_obj_t* l = n.value("mono", false)
+                      ? mono(parent, str(n, "text"), str(n, "style", "body"), str(n, "color", "fg1"))
+                      : text(parent, str(n, "text"), str(n, "style", "body"), n.value("weight", 600),
+                             str(n, "color", "fg1"));
     lv_obj_set_width(l, lv_pct(100));
     if (n.contains("tracking")) lv_obj_set_style_text_letter_space(l, pt(n.at("tracking").get<float>()), 0);
     std::string align = str(n, "align", "left");
     lv_obj_set_style_text_align(l, align == "center" ? LV_TEXT_ALIGN_CENTER
                                    : align == "right" ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
     tag(l, {{"component", "text"},
-            {"tokens", {{"type", "type." + str(n, "style", "body")}, {"color", "color." + str(n, "color", "fg1")}}}});
+            {"tokens", {{"type", std::string(n.value("mono", false) ? "mono " : "") + "type." + str(n, "style", "body")},
+                        {"color", "color." + str(n, "color", "fg1")}}}});
     return l;
 }
 
@@ -512,6 +549,7 @@ lv_obj_t* stack(lv_obj_t* parent, const json& n, const std::string& path, lv_fle
     std::string gap = str(n, "gap", flow == LV_FLEX_FLOW_ROW ? "bodyGap" : "listGap");
     lv_obj_t* o = flex(parent, flow, metric(gap));
     lv_obj_set_size(o, lv_pct(100), LV_SIZE_CONTENT);
+    if (n.value("inset", false)) lv_obj_set_style_pad_hor(o, metric("edge"), 0);  // on a bleed screen
     int i = 0;
     for (const auto& child : n.value("children", json::array())) {
         lv_obj_t* c = build_node(o, child, path + "[" + std::to_string(i++) + "]");
@@ -525,10 +563,26 @@ lv_obj_t* stack(lv_obj_t* parent, const json& n, const std::string& path, lv_fle
     return o;
 }
 
+// "grow": true takes the spare height (h is then its minimum).
 lv_obj_t* spacer(lv_obj_t* parent, const json& n) {
     lv_obj_t* o = box(parent);
-    lv_obj_set_size(o, lv_pct(100), pt(n.value("h", 8.0f)));
+    lv_obj_set_size(o, lv_pct(100), pt(n.value("h", n.value("grow", false) ? 0.0f : 8.0f)));
+    if (n.value("grow", false)) {
+        lv_obj_set_style_min_height(o, pt(n.value("h", 0.0f)), 0);
+        lv_obj_set_flex_grow(o, 1);
+    }
     return o;
+}
+
+// A standalone icon: {"name", "size": icon token, "color": color token}.
+lv_obj_t* icon_node(lv_obj_t* parent, const json& n) {
+    lv_obj_t* wrap = flex(parent, LV_FLEX_FLOW_ROW, 0);
+    lv_obj_set_size(wrap, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(wrap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    icon(wrap, str(n, "name"), icon_size(str(n, "size", "row")), color(str(n, "color", "fg1")));
+    tag(wrap, {{"component", "icon"},
+               {"tokens", {{"size", "icon." + str(n, "size", "row")}, {"color", "color." + str(n, "color", "fg1")}}}});
+    return wrap;
 }
 
 
@@ -664,16 +718,6 @@ void divider_top(lv_obj_t* o) {
     lv_obj_set_style_border_opa(o, opacity("divider"), 0);
 }
 
-lv_obj_t* card(lv_obj_t* parent) {
-    lv_obj_t* c = flex(parent, LV_FLEX_FLOW_COLUMN, 0);
-    lv_obj_set_size(c, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_radius(c, radius("md"), 0);
-    lv_obj_set_style_clip_corner(c, true, 0);
-    lv_obj_set_style_bg_color(c, color("surface"), 0);
-    lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
-    return c;
-}
-
 // A fee above this share of the amount sent is the classic way a tampered PSBT
 // drains a wallet, so it gets a colour and a caption (design-system §12).
 constexpr long long kFeeShareWarnPct = 5;
@@ -709,7 +753,7 @@ lv_obj_t* tx_card(lv_obj_t* parent, const json& n, const std::string& path) {
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         if (i > 0) divider_top(row);
         std::string tag_col = is_fee && high_fee ? "warning" : str(r, "tag_color", "fg2");
-        lv_obj_t* t = text(row, str(r, "tag"), "micro", 600, tag_col);
+        lv_obj_t* t = text(row, str(r, "tag"), "micro", 700, tag_col);
         lv_obj_set_width(t, metric("txTagCol"));
         lv_obj_set_style_text_letter_space(t, pt(0.6f), 0);
         lv_label_set_long_mode(t, LV_LABEL_LONG_MODE_DOTS);
@@ -727,7 +771,7 @@ lv_obj_t* tx_card(lv_obj_t* parent, const json& n, const std::string& path) {
             pressable(row, "surface", "surfacePress", r);
         }
         tag(row, {{"component", "tx_card.row"}, {"path", path + ".rows[" + std::to_string(i) + "]"},
-                  {"tokens", {{"height", "metric.rowH"}, {"tag", "type.micro 600 / metric.txTagCol"},
+                  {"tokens", {{"height", "metric.rowH"}, {"tag", "type.micro 700 / metric.txTagCol"},
                               {"label", "type.micro 600"}, {"amount", "mono type.micro"},
                               {"divider", "color.fg1 @ opacity.divider"}}}});
         ++i;
@@ -846,10 +890,10 @@ lv_obj_t* pill(lv_obj_t* parent, const json& n) {
     lv_obj_set_style_border_color(o, color(col), 0);
     lv_obj_set_style_border_opa(o, opacity("tintBorder"), 0);
     if (n.contains("icon")) icon(o, str(n, "icon"), icon_size("pill"), color(col));
-    text(o, str(n, "label"), "caption", 600, col);
+    text(o, str(n, "label"), "caption", 700, col);
     tag(o, {{"component", "pill"},
             {"tokens", {{"bg", "color." + col + " @ opacity.tint"}, {"border", "color." + col + " @ opacity.tintBorder"},
-                        {"radius", "radius.pill"}, {"label", "type.caption 600"}}}});
+                        {"radius", "radius.pill"}, {"label", "type.caption 700"}}}});
     return wrap;
 }
 
@@ -876,7 +920,7 @@ lv_obj_t* message(lv_obj_t* parent, const json& n) {
         icon(disc, m.icon, icon_size("message"), color(m.color));
     }
     if (n.contains("badge")) {
-        lv_obj_t* b = text(o, str(n, "badge"), "body", 600, m.color ? m.color : "fg1");
+        lv_obj_t* b = text(o, str(n, "badge"), "body", 700, m.color ? m.color : "fg1");
         lv_obj_set_width(b, lv_pct(100));
         lv_obj_set_style_text_align(b, LV_TEXT_ALIGN_CENTER, 0);
     }
@@ -887,7 +931,7 @@ lv_obj_t* message(lv_obj_t* parent, const json& n) {
     }
     tag(o, {{"component", "message (" + kind + ")"},
             {"tokens", {{"disc", "metric.msgIconBox, color." + std::string(m.color ? m.color : "none") + " @ opacity.tint"},
-                        {"badge", "type.body 600"}, {"body", "type.caption 400 / color.fg1, max metric.msgBodyW"},
+                        {"badge", "type.body 700"}, {"body", "type.caption 400 / color.fg1, max metric.msgBodyW"},
                         {"gap", "metric.msgGap"}}}});
     return o;
 }
@@ -960,20 +1004,26 @@ lv_obj_t* spinner(lv_obj_t* parent, const json& n) {
 }
 
 // --- Slide to confirm: the one continuous gesture, reserved for signing ----------
-// The thumb follows the finger; release past 90% of the travel commits (the thumb
-// parks at the end, shows a check, and the action runs after motion.slideConfirm).
-// Anything less eases back over motion.slideReturn. The release position is read
-// from the input device itself, so a fast, fully committed swipe never springs back.
+// Tuned for cheap capacitive panels, where the old "grab the small thumb, let go
+// past 90%" version failed often (decisions.md › Slide to sign):
+//   - The whole bar is the grab target, plus metric.slideClaim above and below. The
+//     thumb moves by how far the finger moves, so it never jumps under the finger.
+//   - Reaching motion.slideCommit.at of the travel signs on the spot (the thumb runs
+//     to the end); there is no careful let-go, so a lift that jitters back can't undo it.
+//   - Less than that eases back over motion.slideReturn.
+//   - A tap that doesn't slide plays a nudge (motion.slideNudge): the thumb hops right
+//     and back and the chevrons flash. A tap alone never signs.
+//   - The chevrons pulse toward the end (motion.slideChevron), staggered.
+// It stays one deliberate ~170 pt horizontal drag, so a pocket or a sleeve can't sign.
 
 struct Slide {
     json node;
-    lv_obj_t *track, *wake, *hint, *thumb, *glyph;
-    int x = 0, from_px = 0, from_x = 0;
+    lv_obj_t *track = nullptr, *wake = nullptr, *hint = nullptr, *thumb = nullptr, *glyph = nullptr;
+    std::vector<lv_obj_t*> chevs;
+    int x = 0, from_px = 0, from_x = 0, moved = 0;
     bool done = false;
     lv_timer_t* confirm = nullptr;
 };
-
-constexpr float kSlideCommit = 0.9f;
 
 int slide_span(const Slide* s) {
     return std::max(1, (int)(lv_obj_get_width(s->track) - lv_obj_get_width(s->thumb)) - 2 * metric("slidePad"));
@@ -1000,6 +1050,53 @@ void slide_confirmed(lv_timer_t* t) {
     handle_tap(s->node);
 }
 
+void slide_parked(lv_anim_t* a) {
+    auto* s = static_cast<Slide*>(lv_obj_get_user_data(static_cast<lv_obj_t*>(a->var)));
+    lv_label_set_text(s->glyph, icon_text("check").c_str());
+    s->confirm = lv_timer_create(slide_confirmed, (uint32_t)motion_ms("slideConfirm"), s);
+}
+
+void slide_animate(Slide* s, int to, const char* motion, lv_anim_completed_cb_t done) {
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s->thumb);
+    lv_anim_set_exec_cb(&a, slide_anim_x);
+    lv_anim_set_values(&a, s->x, to);
+    lv_anim_set_duration(&a, (uint32_t)motion_ms(motion));
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_set_completed_cb(&a, done);
+    lv_anim_start(&a);
+}
+
+// The nudge: out to slideNudge.dist over the first 35%, then home. Chevrons brighten
+// with the thumb. Progress runs 0..1000.
+void slide_nudge_frame(void* thumb, int32_t v) {
+    auto* s = static_cast<Slide*>(lv_obj_get_user_data(static_cast<lv_obj_t*>(thumb)));
+    float t = (float)v / 1000.0f;
+    float f = t < 0.35f ? 1.0f - (1.0f - t / 0.35f) * (1.0f - t / 0.35f)
+                        : 1.0f - (t - 0.35f) / 0.65f;
+    f = std::clamp(f, 0.0f, 1.0f);
+    slide_put(s, (int)std::lround(pt(motion_value("slideNudge", "dist", 0)) * f));
+    lv_color_t c = lv_color_mix(color("fg1"), color("fg3"), (uint8_t)(255 * f));
+    for (lv_obj_t* ch : s->chevs) lv_obj_set_style_text_color(ch, c, 0);
+}
+
+void slide_nudge(Slide* s) {
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s->thumb);
+    lv_anim_set_exec_cb(&a, slide_nudge_frame);
+    lv_anim_set_values(&a, 0, 1000);
+    lv_anim_set_duration(&a, (uint32_t)motion_ms("slideNudge"));
+    lv_anim_start(&a);
+}
+
+void slide_commit(Slide* s) {
+    s->done = true;
+    lv_obj_remove_state(s->thumb, LV_STATE_PRESSED);
+    slide_animate(s, slide_span(s), "slideCommit", slide_parked);
+}
+
 int slide_finger_x() {
     lv_point_t p;
     lv_indev_get_point(lv_indev_active(), &p);
@@ -1011,38 +1108,40 @@ void on_slide(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_DELETE) {
         if (s->confirm) lv_timer_delete(s->confirm);
+        lv_anim_delete(s->thumb, nullptr);
         delete s;
         return;
     }
     if (s->done) return;
     int span = slide_span(s);
+    int at = (int)(span * motion_value("slideCommit", "at", 0.75f));
     switch (code) {
     case LV_EVENT_PRESSED:
-        lv_anim_delete(s->thumb, slide_anim_x);
+        lv_anim_delete(s->thumb, nullptr);  // catch a returning or nudging thumb
+        for (lv_obj_t* ch : s->chevs) lv_obj_set_style_text_color(ch, color("fg3"), 0);
         s->from_px = slide_finger_x();
         s->from_x = s->x;
+        s->moved = 0;
+        lv_obj_add_state(s->thumb, LV_STATE_PRESSED);
         break;
-    case LV_EVENT_PRESSING:
-        slide_put(s, std::clamp(s->from_x + slide_finger_x() - s->from_px, 0, span));
+    case LV_EVENT_PRESSING: {
+        int dx = slide_finger_x() - s->from_px;
+        s->moved = std::max(s->moved, std::abs(dx));
+        slide_put(s, std::clamp(s->from_x + dx, 0, span));
+        if (s->x >= at) slide_commit(s);
         break;
+    }
     case LV_EVENT_RELEASED:
     case LV_EVENT_PRESS_LOST: {
-        slide_put(s, std::clamp(s->from_x + slide_finger_x() - s->from_px, 0, span));
-        if (s->x >= (int)(span * kSlideCommit)) {
-            s->done = true;
-            slide_put(s, span);
-            lv_label_set_text(s->glyph, utf8(kIcons.at("check")).c_str());
-            s->confirm = lv_timer_create(slide_confirmed, (uint32_t)motion_ms("slideConfirm"), s);
-        } else {
-            lv_anim_t a;
-            lv_anim_init(&a);
-            lv_anim_set_var(&a, s->thumb);
-            lv_anim_set_exec_cb(&a, slide_anim_x);
-            lv_anim_set_values(&a, s->x, 0);
-            lv_anim_set_duration(&a, (uint32_t)motion_ms("slideReturn"));
-            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-            lv_anim_start(&a);
-        }
+        // A fast flick can reach the end between two touch reads, so the release
+        // position counts too.
+        int dx = slide_finger_x() - s->from_px;
+        s->moved = std::max(s->moved, std::abs(dx));
+        slide_put(s, std::clamp(s->from_x + dx, 0, span));
+        lv_obj_remove_state(s->thumb, LV_STATE_PRESSED);
+        if (s->x >= at) slide_commit(s);
+        else if (s->moved < metric("slideTapSlop") && s->from_x == 0) slide_nudge(s);
+        else if (s->x > 0) slide_animate(s, 0, "slideReturn", nullptr);
         break;
     }
     default:
@@ -1050,15 +1149,30 @@ void on_slide(lv_event_t* e) {
     }
 }
 
+// The bar's claim reaches past its parent (the actions column), and LVGL only looks
+// for a hit inside a parent's box plus its overflow, so the parent grows its overflow.
+void slide_claim_overflow(lv_event_t* e) {
+    lv_event_set_ext_draw_size(e, metric("slideClaim"));  // keeps the larger of this and the current
+}
+
+void slide_chevron_opa(void* chev, int32_t v) { lv_obj_set_style_opa(static_cast<lv_obj_t*>(chev), (lv_opa_t)v, 0); }
+
 lv_obj_t* slide_to_confirm(lv_obj_t* parent, const json& n) {
     int pad = metric("slidePad");
     int thumb_px = metric("slideH") - 2 * pad;
-    auto* s = new Slide{n};
+    auto* s = new Slide();
+    s->node = n;
     s->track = box(parent);
     lv_obj_set_size(s->track, lv_pct(100), metric("slideH"));
     lv_obj_set_style_radius(s->track, radius("md"), 0);
     lv_obj_set_style_bg_color(s->track, color("surface"), 0);
     lv_obj_set_style_bg_opa(s->track, LV_OPA_COVER, 0);
+    lv_obj_add_flag(s->track, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(s->track, LV_OBJ_FLAG_SCROLL_CHAIN);  // a drag here never scrolls a parent
+    lv_obj_set_ext_click_area(s->track, metric("slideClaim"));
+    lv_obj_add_flag(parent, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+    lv_obj_add_event_cb(parent, slide_claim_overflow, LV_EVENT_REFR_EXT_DRAW_SIZE, nullptr);
+    lv_obj_refresh_ext_draw_size(parent);
 
     s->wake = box(s->track);
     lv_obj_set_size(s->wake, 0, lv_pct(100));
@@ -1071,12 +1185,30 @@ lv_obj_t* slide_to_confirm(lv_obj_t* parent, const json& n) {
     lv_obj_set_size(s->hint, lv_pct(100), lv_pct(100));
     lv_obj_set_style_pad_left(s->hint, thumb_px, 0);
     lv_obj_set_flex_align(s->hint, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    text(s->hint, str(n, "label", "Slide to sign"), "body", 600, "fg2");
+    text(s->hint, str(n, "label", "Slide to sign"), "body", 700, "fg2");
     lv_obj_t* chev = flex(s->hint, LV_FLEX_FLOW_ROW, pt(1));
     lv_obj_set_size(chev, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    for (int i = 0; i < 3; ++i) icon(chev, "chevronRight", icon_size("slideChevron"), color("fg3"));
+    int half = motion_ms("slideChevron") / 2;
+    for (int i = 0; i < 3; ++i) {
+        lv_obj_t* c = icon(chev, "chevronRight", icon_size("slideChevron"), color("fg3"));
+        s->chevs.push_back(c);
+        // Bright to dim and back, each one stagger later: a wave toward the end. Starts
+        // bright, so a still picture (the studio canvas) shows the chevrons as designed.
+        lv_anim_t a;
+        lv_anim_init(&a);
+        lv_anim_set_var(&a, c);
+        lv_anim_set_exec_cb(&a, slide_chevron_opa);
+        lv_anim_set_values(&a, LV_OPA_COVER, opacity("chevronLow"));
+        lv_anim_set_duration(&a, (uint32_t)half);
+        lv_anim_set_reverse_duration(&a, (uint32_t)half);
+        lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+        lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+        lv_anim_set_delay(&a, (uint32_t)(i * motion_value("slideChevron", "stagger", 0)));
+        lv_anim_start(&a);
+    }
 
-    // Thumb: concentric with the track (radius.md - slidePad).
+    // Thumb: concentric with the track (radius.md - slidePad). It only paints; the
+    // track takes the touches.
     s->thumb = flex(s->track, LV_FLEX_FLOW_ROW, 0);
     lv_obj_set_size(s->thumb, thumb_px, thumb_px);
     lv_obj_set_pos(s->thumb, pad, pad);
@@ -1090,18 +1222,17 @@ lv_obj_t* slide_to_confirm(lv_obj_t* parent, const json& n) {
     lv_obj_set_style_shadow_color(s->thumb, lv_color_black(), 0);
     lv_obj_set_flex_align(s->thumb, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     s->glyph = icon(s->thumb, str(n, "icon", "sign"), icon_size("slide"), color("bg"));
-    lv_obj_add_flag(s->thumb, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_remove_flag(s->thumb, LV_OBJ_FLAG_SCROLL_CHAIN);  // a drag here never scrolls a parent
     lv_obj_set_user_data(s->thumb, s);
     for (lv_event_code_t c : {LV_EVENT_PRESSED, LV_EVENT_PRESSING, LV_EVENT_RELEASED, LV_EVENT_PRESS_LOST,
                               LV_EVENT_DELETE}) {
-        lv_obj_add_event_cb(s->thumb, on_slide, c, s);
+        lv_obj_add_event_cb(s->track, on_slide, c, s);
     }
     tag(s->track, {{"component", "slide_to_confirm"},
-                   {"rule", "commit past 90% of the travel; otherwise ease back"},
-                   {"tokens", {{"height", "metric.slideH"}, {"pad", "metric.slidePad"}, {"track", "color.surface"},
-                               {"thumb", "color.active, radius.md - metric.slidePad"},
-                               {"motion", "motion.slideReturn / motion.slideConfirm"}}}});
+                   {"rule", "drag anywhere on the bar; reaching motion.slideCommit.at signs; a tap nudges"},
+                   {"tokens", {{"height", "metric.slideH"}, {"pad", "metric.slidePad"}, {"claim", "+metric.slideClaim"},
+                               {"track", "color.surface"}, {"thumb", "color.active, radius.md - metric.slidePad"},
+                               {"label", "type.body 700 / color.fg2"},
+                               {"motion", "motion.slideCommit / slideReturn / slideConfirm / slideNudge / slideChevron"}}}});
     return s->track;
 }
 
@@ -1118,6 +1249,8 @@ lv_obj_t* unknown(lv_obj_t* parent, const std::string& type_name) {
 
 }  // namespace
 
+lv_obj_t* cta_button(lv_obj_t* parent, const json& n) { return cta(parent, n); }
+
 // ---------------------------------------------------------------------------
 // Public
 // ---------------------------------------------------------------------------
@@ -1127,6 +1260,16 @@ static lv_obj_t* first_tagged(lv_obj_t* o);
 lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     std::string t = str(n, "type");
     lv_obj_t* o = nullptr;
+    // "hide_when": {"kb_style": "Ladder"} leaves the part out while state matches.
+    if (n.contains("hide_when") && n.at("hide_when").is_object()) {
+        bool match = true;
+        for (auto& [k, v] : n.at("hide_when").items()) match = match && state().value(k, json()) == v;
+        if (match) {
+            o = box(parent);
+            lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+            return o;
+        }
+    }
     if (t == "section_head") o = section_head(parent, n);
     else if (t == "seed_row") o = seed_row(parent, n);
     else if (t == "seed_header") o = seed_header(parent, n);
@@ -1151,6 +1294,19 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "note") o = note(parent, n, path);
     else if (t == "spinner") o = spinner(parent, n);
     else if (t == "slide_to_confirm") o = slide_to_confirm(parent, n);
+    else if (t == "icon") o = icon_node(parent, n);
+    else if (t == "text_field") o = text_field(parent, n);
+    else if (t == "keyboard") o = keyboard(parent, n);
+    else if (t == "numpad") o = numpad(parent, n);
+    else if (t == "word_entry") o = word_entry(parent, n);
+    else if (t == "dice_pad") o = dice_pad(parent, n);
+    else if (t == "qr_display") o = qr_display(parent, n);
+    else if (t == "qr_controls") o = qr_controls(parent, n);
+    else if (t == "scanner") o = scanner(parent, n);
+    else if (t == "word_list") o = word_list(parent, n);
+    else if (t == "word_quiz") o = word_quiz(parent, n);
+    else if (t == "info_card") o = info_card(parent, n);
+    else if (t == "fp_change") o = fp_change(parent, n);
     else o = unknown(parent, t);
     // The component's tag is usually on `o`; some (tx_card) tag an inner object instead.
     lv_obj_t* tagged = first_tagged(o);
@@ -1162,7 +1318,7 @@ lv_obj_t* build_navbar(lv_obj_t* parent, const json& nav, const std::string& pat
     lv_obj_t* bar = box(parent);
     lv_obj_set_size(bar, lv_pct(100), metric("navH"));
     lv_obj_set_style_bg_color(bar, color("bg"), 0);
-    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(bar, nav.value("transparent", false) ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
 
     // Title block, centred; capped at navTitleMax (content limit: 13 characters).
     std::string subtitle = str(nav, "subtitle");
@@ -1213,6 +1369,43 @@ lv_obj_t* build_navbar(lv_obj_t* parent, const json& nav, const std::string& pat
               {"tokens", {{"height", "metric.navH"}, {"title", subtitle.empty() ? "type.title 600" : "type.large 600"},
                           {"title max", "metric.navTitleMax"}}}});
     return bar;
+}
+
+// --- Breathing border ------------------------------------------------------
+// Upstream's pulsing edge, for the alarming tier only, so a warning can't be dismissed
+// on reflex. Never on success or info: nagging there teaches people to ignore it.
+
+static void breathe_opa(void* obj, int32_t v) {
+    lv_obj_set_style_border_opa(static_cast<lv_obj_t*>(obj), (lv_opa_t)v, 0);
+}
+
+void breathing_border(lv_obj_t* screen, const std::string& kind, int top_px) {
+    std::string col = msg_color(kind);
+    if (col.empty() || kind == "info" || kind == "success") return;
+    int inset = metric("breatheInset");
+    lv_obj_t* b = box(screen);
+    lv_obj_add_flag(b, LV_OBJ_FLAG_FLOATING);
+    lv_obj_set_pos(b, inset, top_px);
+    lv_obj_set_size(b, lv_obj_get_width(screen) - 2 * inset, lv_obj_get_height(screen) - top_px - inset);
+    lv_obj_set_style_radius(b, radius("md") + pt(4), 0);
+    lv_obj_set_style_border_width(b, metric("breatheBorder"), 0);
+    lv_obj_set_style_border_color(b, color(col), 0);
+    lv_obj_set_style_border_opa(b, opacity("breatheHigh"), 0);
+    int half = motion_ms("breathe") / 2;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, b);
+    lv_anim_set_exec_cb(&a, breathe_opa);
+    lv_anim_set_values(&a, opacity("breatheHigh"), opacity("breatheLow"));
+    lv_anim_set_duration(&a, (uint32_t)half);
+    lv_anim_set_reverse_duration(&a, (uint32_t)half);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&a);
+    tag(b, {{"component", "breathing_border (" + kind + ")"},
+            {"rule", "warning, dire and error dialogs only"},
+            {"tokens", {{"border", "metric.breatheBorder / color." + col}, {"inset", "metric.breatheInset"},
+                        {"pulse", "opacity.breatheLow..breatheHigh over motion.breathe"}}}});
 }
 
 // --- Snackbar --------------------------------------------------------------

@@ -21,7 +21,7 @@ struct TypeTok {
     int lh = 22;    // line height, points
 };
 
-enum class Face { Regular, SemiBold, Mono, Icons };
+enum class Face { Regular, SemiBold, Bold, Mono, Icons };
 
 // Parse tokens JSON and make it active. On failure the previous tokens stay active
 // and *err explains why.
@@ -45,7 +45,7 @@ lv_opa_t opacity(const std::string& name);
 
 // A rasterized font for a face at a pixel size (cached; created on first use).
 const lv_font_t* font(Face face, int px);
-// Font for a type token at a weight (400 regular, anything else SemiBold).
+// Font for a type token at a weight: 400 Regular, 700 Bold, anything else SemiBold.
 const lv_font_t* type_font(const std::string& type_name, int weight);
 
 // Warnings collected since the last clear (unknown token names, bad values).

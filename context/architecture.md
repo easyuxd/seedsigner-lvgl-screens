@@ -1,6 +1,6 @@
 ---
 load_when: "code layout, prototype.json schema, the C API, the build, adding a component"
-last_verified: 2026-10-18
+last_verified: 2026-10-19
 source_refs:
   - components/seedsigner/redesign/**
   - tools/apps/web_runner/web_runner.cpp
@@ -22,7 +22,9 @@ prototype.json ─► rd_prototype.cpp  shells (the six screen types), navigatio
                        │            prototype state, the public C API (redesign.h)
                        ▼
                   rd_ui.cpp       components (navbar, list_item, tile, …), snackbar,
-                                  press feedback, inspector tags
+                                  press feedback, breathing border, inspector tags
+                  rd_input.cpp    text field, keyboards + numpad, word entry, dice
+                  rd_qr.cpp       scanner, QR display     rd_seed.cpp  words, quiz, cards
                        │
                   LVGL 9.5  ──►  browser (web_runner, WASM)   ·   device (firmware)
 ```
@@ -33,9 +35,13 @@ Everything lives in `components/seedsigner/redesign/` and is additive: Classic c
 |---|---|
 | `redesign.h` | Public C API for hosts (load JSON, show a path, status, inspect, outline, listener) |
 | `rd_tokens.*` | Parses `tokens.json`; unknown names warn (Problems panel) and render loud magenta |
-| `rd_ui.*` | Component library; one function per component, mirroring the prototype's `ui.jsx` |
+| `rd_ui.*` | Component library; one function per component, mirroring the prototype's `ui.jsx`; `build_node()` dispatches every `type` |
+| `rd_kit.h` | The shared building blocks (`box`, `flex`, `text`, `mono`, `icon`, `pressable`, `cta_button`, …) for components in their own files |
+| `rd_input.cpp` · `rd_qr.cpp` · `rd_seed.cpp` | Input (field, keyboards, numpad, word entry, dice) · QR transport (scanner, display) · seed (word list, quiz, info card, fingerprint change) |
+| `rd_bip39.cpp` | The BIP-39 English word list (generated from bitcoin/bips, sha256 in the header) |
+| `rd_embedded.cpp` | The firmware's compiled-in JSON, and its 10 ms touch read period |
 | `rd_prototype.cpp` | Shells, navigation, state, and the C API implementation |
-| `fonts/` | Baked Inconsolata + icons (`scripts/redesign/build_fonts.py`); sources in `fonts/src/` |
+| `fonts/` | Baked Inconsolata, icons and Open Sans Bold (`scripts/redesign/build_fonts.py`); sources in `fonts/src/` |
 | `redesign_sources.cmake` | Source list for any build that includes the Redesign |
 
 ## prototype.json
@@ -52,7 +58,9 @@ Everything lives in `components/seedsigner/redesign/` and is additive: Classic c
       "type": "menu_list",                 // one of the six screen types
       "navbar": { "title": "Settings", "left": "back" },   // left: back | power; right: icon
       "body":    [ /* components, scroll if tall */ ],
-      "actions": [ /* components, anchored bottom */ ]
+      "actions": [ /* components, anchored bottom */ ],
+      "bleed": true,                       // optional: no edge/bottom padding (docked keyboard, camera feed)
+      "auto": { "ms": 1600, "go": "…" }    // optional: a tap after a delay
     }
   }
 }
@@ -71,9 +79,10 @@ Everything lives in `components/seedsigner/redesign/` and is additive: Classic c
 | `cta` | `label`, `kind` (`primary` or not) |
 | `choice_list` | `choice` (state key), `options` [{`label`, `blurb`}] |
 | `toggle_row` | `icon`, `label`, `state` (state key, boolean) |
-| `text` | `text`, `style` (type token), `weight`, `color` (color token), `align` |
-| `group` / `row` | `children`, `gap` (metric token); `row` makes equal columns |
-| `spacer` | `h` (points) |
+| `text` | `text`, `style` (type token), `weight` (400, 600, 700), `color` (color token), `align`, `mono` |
+| `icon` | `name`, `size` (icon token), `color` |
+| `group` / `row` | `children`, `gap` (metric token), `inset` (edge padding, on a bleed screen); `row` makes equal columns |
+| `spacer` | `h` (points); `grow` takes the spare height (`h` is then its minimum) |
 | `btc_amount` | `sats`, `style` (type token, default `hero`), `align`, `color`, `unit` (default true), `sub` (sats line, default true), `sign`, `prefix`, `prefix_color` |
 | `address_block` | `address` |
 | `tx_card` | `rows` [{`tag` (`TO`, `FEE`, `CHANGE`, …), `label`, `label_color`, `sats`, `value_color`, tap keys}]; adds the fee-share warning itself |
@@ -85,17 +94,33 @@ Everything lives in `components/seedsigner/redesign/` and is additive: Classic c
 | `note` | `icon`, `icon_color`, `children` |
 | `spinner` | `label` |
 | `slide_to_confirm` | `label`, `icon`, tap keys (run on commit) |
+| `scanner` | `label`, `done`, `total` (frames; 0 = plain viewfinder), `next` (tap keys), `phase` (pins `idle` / `receiving` / `received` / `unrecognized`) |
+| `qr_display` | `frames` (1 = a still code), `note` (under a still code) |
+| `qr_controls` | `cta` (the CTA beside the controls); goes in `actions` after a `qr_display` |
+| `word_list` | `from` (first position), `words` |
+| `word_quiz` | `answer`, `choices`, `next` (tap keys) |
+| `info_card` | `icon`, `label`, `value`, `mono`, `style` |
+| `fp_change` | `state` (the passphrase key), `from` (fingerprint); saves the new one to state `pp_fp` |
+| `text_field` | `state`, `placeholder`, `max` (characters) |
+| `keyboard` | `style` (pins one; default: state `kb_style`) |
+| `numpad` | — (types into the screen's `text_field`) |
+| `word_entry` | `words` (demo count), `next` (tap keys); state `word_no` |
+| `dice_pad` | `rolls` (demo count), `next` (tap keys; becomes the Generate CTA) |
 
 `seed_row` also takes `fp_color`, `sub_color`, `trail` (a status icon instead of the chevron) and `trail_color`; `text` takes `tracking` (letter spacing, points); `cta` `kind` can be `dire`.
 
-**Tap keys:** `"go": "<screen id>" | "back" | "home"` (may use `{state}`, e.g. `"{sign_next}"`), `"set": {key: value, …}` (sets prototype state, then any `go` runs), `"snack": {"type", "label", "sublabel"}`, `"muted": true` (shows an info snack). Color and icon values are token/icon *names* (`"dire"`, `"fingerprint"`), never hex.
+**Tap keys:** `"go": "<screen id>" | "back" | "home" | "<path>"` (may use `{state}`, e.g. `"{sign_next}"`; a path such as `"home/seed"` replaces the back stack), `"replace": true` (the target replaces the current screen, so Back skips it), `"set": {key: value, …}` (sets prototype state, then any `go` runs; a string value may read state, `"{seed_fp}"`), `"require": "<state key>"` with `"require_label"` (an empty value shows an info snack instead), `"snack": {"type", "label", "sublabel"}`, `"muted": true` (shows an info snack), `"choose": {key, value}` (sets state and redraws). Color and icon values are token/icon *names* (`"dire"`, `"fingerprint"`), never hex.
+
+**Any component** may carry `"hide_when": {state key: value}` to be left out while state matches.
+
+**Navbar keys:** `title`, `subtitle`, `left` (`back` | `power`), `right` (icon) with `right_go`, `transparent`.
 
 **Screen key `auto`:** `{"ms": 1600, …tap keys}` acts like a tap after a delay, for progress screens that move on by themselves. It's cancelled when the screen changes.
 
 ## Adding a component
 
 1. Find it in the prototype (`seedsigner-touchscreen/prototype/ui.jsx` or the screen file) and its rules in [design-system.md](design-system.md).
-2. Add a function in `rd_ui.cpp` built only from tokens (`space()`, `metric()`, `radius()`, `color()`, `text()`, `icon()`), with `pressable()` if tappable, and `tag()` it with its component name and tokens so the inspector can explain it.
+2. Add a function in `rd_ui.cpp` (or, for a family of components, its own `rd_*.cpp` using `rd_kit.h`, declared there) built only from tokens (`space()`, `metric()`, `radius()`, `color()`, `text()`, `icon()`), with `pressable()` if tappable, and `tag()` it with its component name and tokens so the inspector can explain it.
 3. Register its `type` in `build_node()`. Add any new tokens to `tokens.json`.
 4. Use it in `prototype.json`, document its keys in the table above, and update [screen-coverage.md](screen-coverage.md).
 
