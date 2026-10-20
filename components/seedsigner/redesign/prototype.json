@@ -37,7 +37,9 @@
     { "id": "qr", "title": "QR transport", "description": "The air gap: scanning in (simulated; no camera yet) and an animated QR out.",
       "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr"] },
     { "id": "backup", "title": "Seed backup", "description": "Show the words behind a warning, then optionally check three of them.",
-      "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] }
+      "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] },
+    { "id": "discard", "title": "Discard seed", "description": "Wiping a seed from the device, with keeping it as the easy choice.",
+      "screens": ["discard"] }
   ],
 
   "screens": {
@@ -527,6 +529,21 @@
         { "type": "step_rail", "steps": 3, "at": 2 },
         { "type": "word_quiz", "answer": "entire", "choices": ["maple", "tiger", "entire", "fossil"],
           "next": { "go": "{backup_next}", "snack": { "type": "success", "label": "Backup verified" } } }
+      ]
+    },
+
+    "discard": {
+      "type": "dialog",
+      "_note": "The seed leaves the device. The demo list stays as it is (prototype state beyond toggles is in the backlog).",
+      "navbar": { "title": "Discard", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Discard seed?",
+          "body": "Wipe seed {seed_fp} from this device? Without a backup, it's gone." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Keep seed", "kind": "primary", "go": "back" },
+        { "type": "cta", "label": "Discard", "kind": "dire", "go": "home",
+          "snack": { "type": "success", "label": "Seed {seed_fp} discarded", "sublabel": "Demo: the seed list doesn't change" } }
       ]
     }
   }
