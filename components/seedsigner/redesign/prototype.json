@@ -39,7 +39,9 @@
     { "id": "backup", "title": "Seed backup", "description": "Show the words behind a warning, then optionally check three of them.",
       "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] },
     { "id": "discard", "title": "Discard seed", "description": "Wiping a seed from the device, with keeping it as the easy choice.",
-      "screens": ["discard"] }
+      "screens": ["discard"] },
+    { "id": "load_create", "title": "Load or create seed", "description": "Enter words, scan a SeedQR, or roll dice; every path ends at Finalize. Demo counts are short.",
+      "screens": ["enter_words_count", "enter_word", "new_seed_count", "new_seed_entropy", "dice", "finalize"] }
   ],
 
   "screens": {
@@ -544,6 +546,75 @@
         { "type": "cta", "label": "Keep seed", "kind": "primary", "go": "back" },
         { "type": "cta", "label": "Discard", "kind": "dire", "go": "home",
           "snack": { "type": "success", "label": "Seed {seed_fp} discarded", "sublabel": "Demo: the seed list doesn't change" } }
+      ]
+    },
+
+    "enter_words_count": {
+      "type": "menu_list",
+      "navbar": { "title": "Seed Words", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "enter_word",
+          "set": { "word_no": 1, "word_total": 12 } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "enter_word",
+          "set": { "word_no": 1, "word_total": 24 } }
+      ]
+    },
+
+    "enter_word": {
+      "type": "input",
+      "_note": "Demo: three words, then the seed loads. A real seed has 12 or 24 (backlog).",
+      "navbar": { "title": "Word {word_no} of 3", "subtitle": "Demo · a real seed has {word_total}", "left": "back" },
+      "body": [
+        { "type": "word_entry", "words": 3, "next": { "go": "finalize", "set": { "new_fp": "9d72a3f1" } } }
+      ]
+    },
+
+    "new_seed_count": {
+      "type": "menu_list",
+      "navbar": { "title": "Create Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "seeds", "label": "12 words", "go": "new_seed_entropy",
+          "set": { "dice_need": 50 } },
+        { "type": "list_item", "icon": "seeds", "label": "24 words", "go": "new_seed_entropy",
+          "set": { "dice_need": 99 } }
+      ]
+    },
+
+    "new_seed_entropy": {
+      "type": "menu_list",
+      "navbar": { "title": "Create Seed", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "derivation", "label": "Roll dice", "value": "Recommended", "go": "dice" },
+        { "type": "list_item", "icon": "scan", "label": "Image entropy", "muted": true }
+      ]
+    },
+
+    "dice": {
+      "type": "input",
+      "_note": "Demo: six rolls. A real seed needs 50 (12 words) or 99 (24 words) (backlog).",
+      "navbar": { "title": "Roll Dice", "subtitle": "Demo · a real seed needs {dice_need}", "left": "back" },
+      "body": [
+        { "type": "dice_pad", "rolls": 6,
+          "next": { "go": "words_warning", "set": { "new_fp": "5f1e0c3a", "backup_next": "finalize" } } }
+      ]
+    },
+
+    "finalize": {
+      "type": "dialog",
+      "navbar": { "title": "Finalize Seed" },
+      "body": [
+        { "type": "icon", "name": "fingerprint", "size": "finalize" },
+        { "type": "group", "gap": "railGap", "children": [
+          { "type": "text", "text": "fingerprint", "style": "caption", "color": "fg2", "align": "center" },
+          { "type": "text", "text": "{new_fp}", "mono": true, "style": "hero", "align": "center" }
+        ]}
+      ],
+      "actions": [
+        { "type": "cta", "label": "Done", "kind": "primary", "go": "home/seed",
+          "set": { "seed_fp": "{new_fp}", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing_fail" } },
+        { "type": "cta", "label": "BIP-39 passphrase", "go": "passphrase",
+          "set": { "seed_fp": "{new_fp}", "seed_sub": "Single sig · Native segwit", "seed_signs": "psbt_signing_fail",
+                   "passphrase": "" } }
       ]
     }
   }
