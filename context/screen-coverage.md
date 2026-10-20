@@ -1,6 +1,6 @@
 ---
 load_when: "which prototype screens are ported, what to port next"
-last_verified: 2026-10-19
+last_verified: 2026-10-20
 source_refs:
   - components/seedsigner/redesign/prototype.json
   - components/seedsigner/redesign/rd_ui.cpp
@@ -46,7 +46,7 @@ One demo transaction, the prototype's "Standard spend" (2 inputs, 2 recipients, 
 | `psbt-verify-failed` | `psbt_verify_failed` | dialog | Open from the Screens list; `dire` CTA |
 | `psbt-opreturn` | (none) | | Not ported (no OP_RETURN in this transaction) |
 
-## Ported (the remaining flows, 2026-10-19, verified in the browser at both sizes)
+## Ported (the remaining flows, 2026-10-19, verified in the browser at both sizes and on both boards)
 
 Demo counts are short: 3 seed words and 6 dice rolls (backlog: the full flows).
 

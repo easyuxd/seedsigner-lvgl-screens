@@ -1,6 +1,6 @@
 ---
 load_when: "what's planned or deferred"
-last_verified: 2026-10-19
+last_verified: 2026-10-20
 source_refs:
   - context/backlog.md
 ---
@@ -23,8 +23,12 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
 2. ✅ **Flash the 3.5″** (`BOARD=WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_35 BOARD_VARIANT=PRE_REV3`), 2026-10-17: chip v1.3, Redesign selected; portrait, orientation and touch confirmed. Its mirror firmware is retired. Both boards now run the same firmware.
 3. ✅ **Press states** ([easyuxd/seedsigner-lvgl-screens#3](https://github.com/easyuxd/seedsigner-lvgl-screens/pull/3); firmware bump in [easyuxd/seedsigner-micropython-builder#3](https://github.com/easyuxd/seedsigner-micropython-builder/pull/3)), 2026-10-17, **verified on both boards**: option A · Quiet, chosen from three in `explorations/press-states-lab.html`. Color is instant on touch-down; scale 0.97 eases in over 30 ms and back over 140 ms; every tap holds its press at least 80 ms from touch-down; `surfacePress` `#393939`, `activePress` `#EB9209`; the selected `choice_list` option presses to `activePress`; transparent controls no longer flash white. Rules: [design-system.md](design-system.md) §6 and §10; why: [decisions.md](decisions.md) › Press states. The same builder PR fixes `Flash Device.command` stopping with `port?: unbound variable` when double-clicked.
 4. ✅ **PSBT signing flow**, 2026-10-17, **verified in the studio at both sizes and on both boards** (4.3″ and 3.5″, 2026-10-18). One demo transaction ("Standard spend"), end to end: Scan QR (stand-in) → Select Signer → Review → The Math → Will Send ×2 → Your Change → Sign (slide) → spinner → Home. Picking a seed that isn't an input leads to Sign Failed. The other warning and error dialogs are built and open from the studio's Screens list. New components `btc_amount`, `address_block`, `tx_card` (with the fee-share warning), `summary_card`, `math`, `step_rail`, `pill`, `message`, `note`, `spinner`, `slide_to_confirm`, and a `dire` CTA ([design-system.md](design-system.md) §12; [screen-coverage.md](screen-coverage.md)).
-5. ✅ **Port the remaining flows**, 2026-10-19, **verified in the studio at both sizes** (firmware for both boards built; not yet flashed). All seven, one commit per flow: QR transport (simulated scanner, animated QR out, and signing now ends on the signed QR) → seed backup (words behind a warning, optional quiz) → discard → load/create seed (word entry over the full BIP-39 list, dice, Finalize) → passphrase with **all four keyboards** (Settings › Keyboard now picks the real one) → export Xpub → BIP-85 (numpad). 40 new screens; the canvas has 55. Also in this round: **slide to sign** made reliable on touch (grab anywhere, signs at 75%, tap nudge, 10 ms touch reads; [design-system.md](design-system.md) §6). Departures from the prototype: [decisions.md](decisions.md); from upstream: [redesign-changes.md](redesign-changes.md).
-6. **Flash both boards and feel it in the hand**: the slide, the four keyboards and the scanner especially. Then pick a default keyboard.
+5. ✅ **Port the remaining flows** ([easyuxd/seedsigner-lvgl-screens#7](https://github.com/easyuxd/seedsigner-lvgl-screens/pull/7); firmware in [easyuxd/seedsigner-micropython-builder#6](https://github.com/easyuxd/seedsigner-micropython-builder/pull/6)), 2026-10-19, **verified in the studio at both sizes and on both boards** (2026-10-20). All seven, one commit per flow: QR transport (simulated scanner, animated QR out, and signing now ends on the signed QR) → seed backup (words behind a warning, optional quiz) → discard → load/create seed (word entry over the full BIP-39 list, dice, Finalize) → passphrase with **all four keyboards** (Settings › Keyboard now picks the real one) → export Xpub → BIP-85 (numpad). 40 new screens; the canvas has 55. Also in this round: **slide to sign** made reliable on touch (grab anywhere, signs at 75%, tap nudge, 10 ms touch reads; [design-system.md](design-system.md) §6). Departures from the prototype: [decisions.md](decisions.md); from upstream: [redesign-changes.md](redesign-changes.md).
+6. ✅ **Flash both boards and feel it in the hand**, 2026-10-20: the new firmware runs on the 4.3″ and the 3.5″.
+7. **Pick the keyboard from use.** Type the same passphrase on all four styles on both boards, keep one (or two), and remove the rest from `rd_input.cpp`, Settings › Keyboard and the canvas. The biggest piece of Redesign C, so YAGNI pays most here. Record the choice in [decisions.md](decisions.md).
+8. **A beginner usability test on the boards.** 3–5 people new to bitcoin, three tasks: sign a PSBT, back up a seed, add a passphrase. Watch, don't help; note where they hesitate or mis-tap. Findings are re-ranked to the top of this list. The project's goal is "most beginner-friendly", and no beginner has used it yet.
+9. **Seeds as real prototype state.** A loaded, created or passphrase seed appears in the seed lists; Discard removes it; Home's "All N" counts them. Today Finalize and Discard only pretend, which testers notice. Replaces the "Prototype state beyond toggles" gap below.
+10. **Wire the Redesign to the SeedSigner app (plan only).** Turn the clickable prototype into a working wallet: a binding from the MicroPython views to Redesign screens with real data (seeds, PSBTs, QR in and out). A separate, much larger project ([decisions.md](decisions.md) › What the Redesign is); start with a written plan and an interview once the design settles.
 
 ## Design-system gaps (port with the first screen that needs them)
 
@@ -33,7 +37,7 @@ In priority order. Principle: **YAGNI/KISS until it's stable.** Move an item int
 - ✅ The slide-to-sign hint's pulsing chevrons (`ss-chev`), 2026-10-19.
 - ✅ A **Bold (700)** Open Sans face, 2026-10-19: Redesign-only, used where the prototype uses 700.
 - Tabular numerals for UI-font counters; `textWrap: balance/pretty` equivalents (manual line breaks or a helper).
-- Prototype state beyond toggles and choices (e.g. adding or removing seeds), only if a flow needs it.
+- Prototype state beyond toggles and choices: the seed list is now item 9 in *Now → next*.
 
 ## Design Studio
 
@@ -67,4 +71,4 @@ Other ideas:
 - Localization for the Redesign (content limits already assume translation; needs the language-packs repo).
 - Hardware-button input for the Redesign (Pi Zero), if ever wanted.
 - Offering pieces upstream (tokens + shells as an optional theme) once stable.
-- Archiving `seedsigner-touchscreen` once every screen is ported.
+- Archiving `seedsigner-touchscreen` once every screen is ported (all but `psbt-opreturn` are, 2026-10-19).
