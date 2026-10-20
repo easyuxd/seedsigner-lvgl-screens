@@ -1294,6 +1294,9 @@ lv_obj_t* build_node(lv_obj_t* parent, const json& n, const std::string& path) {
     else if (t == "spinner") o = spinner(parent, n);
     else if (t == "slide_to_confirm") o = slide_to_confirm(parent, n);
     else if (t == "icon") o = icon_node(parent, n);
+    else if (t == "qr_display") o = qr_display(parent, n);
+    else if (t == "qr_controls") o = qr_controls(parent, n);
+    else if (t == "scanner") o = scanner(parent, n);
     else o = unknown(parent, t);
     // The component's tag is usually on `o`; some (tx_card) tag an inner object instead.
     lv_obj_t* tagged = first_tagged(o);

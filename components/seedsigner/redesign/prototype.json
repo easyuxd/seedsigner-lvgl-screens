@@ -33,7 +33,9 @@
     { "id": "psbt_sign", "title": "Sign PSBT · sign", "description": "The one irreversible control on the device: a slide, not a tap.",
       "screens": ["psbt_sign", "psbt_signing", "psbt_signing_fail", "psbt_error"] },
     { "id": "psbt_alerts", "title": "Sign PSBT · warnings", "description": "Three severities, one component: warning, dire and error.",
-      "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] }
+      "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] },
+    { "id": "qr", "title": "QR transport", "description": "The air gap: scanning in (simulated; no camera yet) and an animated QR out.",
+      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr"] }
   ],
 
   "screens": {
@@ -367,6 +369,65 @@
       ],
       "actions": [
         { "type": "cta", "label": "Discard transaction", "kind": "dire", "go": "home" }
+      ]
+    },
+
+    "scan_psbt": {
+      "type": "input",
+      "bleed": true,
+      "_note": "QR transport IN (prototype qr.jsx ScanScreen). No camera yet: frames arrive, it says received, then hands off. A tap skips ahead.",
+      "body": [
+        { "type": "scanner", "label": "transaction", "done": "Transaction received", "total": 24,
+          "next": { "go": "psbt_select_seed", "replace": true } }
+      ]
+    },
+
+    "scan_signer": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Sign PSBT from a seed: the signer is already chosen, so the scan goes straight to Review.",
+      "body": [
+        { "type": "scanner", "label": "transaction", "done": "Transaction received", "total": 24,
+          "next": { "go": "psbt_overview", "replace": true } }
+      ]
+    },
+
+    "scan_seedqr": {
+      "type": "input",
+      "bleed": true,
+      "body": [
+        { "type": "scanner", "label": "SeedQR", "done": "Seed loaded", "total": 1,
+          "next": { "go": "finalize", "replace": true, "set": { "new_fp": "e3b0c442" } } }
+      ]
+    },
+
+    "scan_idle": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the plain viewfinder, pinned. In use it gives up after a few seconds (motion.scanGiveUp) and shows Unrecognized.",
+      "body": [
+        { "type": "scanner", "phase": "idle" }
+      ]
+    },
+
+    "scan_unrecognized": {
+      "type": "input",
+      "bleed": true,
+      "_note": "Design Studio: the unrecognized-code state, pinned.",
+      "body": [
+        { "type": "scanner", "phase": "unrecognized" }
+      ]
+    },
+
+    "psbt_signed_qr": {
+      "type": "review",
+      "_note": "QR transport OUT (prototype qr.jsx QRDisplayScreen): the signed PSBT as an animated QR. No back: signing is done, Done leaves.",
+      "navbar": { "title": "Signed Transaction", "subtitle": "Scan with your coordinator" },
+      "body": [
+        { "type": "qr_display", "frames": 12 }
+      ],
+      "actions": [
+        { "type": "qr_controls", "cta": { "label": "Done", "go": "home" } }
       ]
     }
   }
