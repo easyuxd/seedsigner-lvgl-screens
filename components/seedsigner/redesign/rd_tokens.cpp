@@ -163,6 +163,7 @@ const lv_font_t* font(Face face, int px) {
     switch (face) {
         case Face::Regular:  data = opensans_western_regular_ttf;  len = opensans_western_regular_ttf_len;  break;
         case Face::SemiBold: data = opensans_western_semibold_ttf; len = opensans_western_semibold_ttf_len; break;
+        case Face::Bold:     data = rd_ui_bold_ttf;                len = rd_ui_bold_ttf_len;                break;
         case Face::Mono:     data = rd_mono_semibold_ttf;          len = rd_mono_semibold_ttf_len;          break;
         case Face::Icons:    data = rd_icons_ttf;                  len = rd_icons_ttf_len;                  break;
     }
@@ -177,7 +178,8 @@ const lv_font_t* font(Face face, int px) {
 }
 
 const lv_font_t* type_font(const std::string& type_name, int weight) {
-    return font(weight == 400 ? Face::Regular : Face::SemiBold, pt((float)type(type_name).size));
+    Face face = weight == 400 ? Face::Regular : weight == 700 ? Face::Bold : Face::SemiBold;
+    return font(face, pt((float)type(type_name).size));
 }
 
 const std::vector<std::string>& warnings() { return g_warnings; }

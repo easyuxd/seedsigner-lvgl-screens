@@ -22,6 +22,10 @@ lv_obj_t* build_node(lv_obj_t* parent, const nlohmann::ordered_json& node, const
 // The navbar ({"title", "subtitle", "left": "back"|"power", "right": icon}).
 lv_obj_t* build_navbar(lv_obj_t* parent, const nlohmann::ordered_json& nav, const std::string& path);
 
+// The alarming tier's breathing border (warning / dire / error dialogs), round the
+// screen below the navbar. `top_px` is where the content starts (the navbar's height).
+void breathing_border(lv_obj_t* screen, const std::string& kind, int top_px);
+
 // Non-interrupting overlay message (type: default|info|success|warning|dire|error).
 void show_snack(const std::string& type, const std::string& label, const std::string& sublabel);
 void clear_snack();

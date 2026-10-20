@@ -189,7 +189,7 @@
       "body": [
         { "type": "step_rail", "steps": 5, "at": 0 },
         { "type": "group", "children": [
-          { "type": "text", "text": "SENDING", "style": "micro", "color": "fg2", "align": "center", "tracking": 1.6 },
+          { "type": "text", "text": "SENDING", "style": "micro", "weight": 700, "color": "fg2", "align": "center", "tracking": 1.6 },
           { "type": "btc_amount", "sats": 2453100, "style": "display", "align": "center" }
         ]},
         { "type": "tx_card", "rows": [

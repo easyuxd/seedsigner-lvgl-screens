@@ -143,6 +143,17 @@ void build_screen(lv_obj_t* scr, const std::string& id, const json& def) {
     }
     rd::tag(scr, {{"component", "screen"}, {"id", id}, {"screen_type", type}});
 
+    // A dialog carrying an alarming message breathes (warning, dire, error).
+    if (type == "dialog") {
+        for (const auto& node : def.value("body", json::array())) {
+            if (node.value("type", std::string()) == "message") {
+                int top = def.contains("navbar") ? rd::metric("navH") : 0;
+                rd::breathing_border(scr, node.value("kind", std::string("default")), top);
+                break;
+            }
+        }
+    }
+
     // "auto": {"ms": 1600, "go": ...} acts like a tap after a delay (a progress screen
     // moving on by itself). Any tap keys work.
     if (def.contains("auto") && def.at("auto").is_object()) {
