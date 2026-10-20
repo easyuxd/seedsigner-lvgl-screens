@@ -35,7 +35,7 @@
     { "id": "psbt_alerts", "title": "Sign PSBT · warnings", "description": "Three severities, one component: warning, dire and error.",
       "screens": ["psbt_warn_script", "psbt_warn_nochange", "psbt_verify_failed"] },
     { "id": "qr", "title": "QR transport", "description": "The air gap: scanning in (simulated; no camera yet) and an animated QR out.",
-      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr"] },
+      "screens": ["scan_psbt", "scan_signer", "scan_seedqr", "scan_idle", "scan_unrecognized", "psbt_signed_qr", "xpub_qr"] },
     { "id": "backup", "title": "Seed backup", "description": "Show the words behind a warning, then optionally check three of them.",
       "screens": ["backup", "words_warning", "words_1", "words_2", "words_3", "backup_prompt", "backup_quiz_1", "backup_quiz_2", "backup_quiz_3"] },
     { "id": "discard", "title": "Discard seed", "description": "Wiping a seed from the device, with keeping it as the easy choice.",
@@ -43,7 +43,9 @@
     { "id": "load_create", "title": "Load or create seed", "description": "Enter words, scan a SeedQR, or roll dice; every path ends at Finalize. Demo counts are short.",
       "screens": ["enter_words_count", "enter_word", "new_seed_count", "new_seed_entropy", "dice", "finalize"] },
     { "id": "passphrase", "title": "Passphrase", "description": "Typing a passphrase on the keyboard chosen in Settings, then the fingerprint it leads to. The other three keyboards are pinned for comparison.",
-      "screens": ["passphrase", "passphrase_review", "kb_ladder", "kb_halo", "kb_loupe"] }
+      "screens": ["passphrase", "passphrase_review", "kb_ladder", "kb_halo", "kb_loupe"] },
+    { "id": "xpub", "title": "Export Xpub", "description": "Signature type, script type and coordinator, a privacy warning, then the Xpub as a QR.",
+      "screens": ["xpub_sigtype", "xpub_scripttype", "xpub_coordinator", "xpub_warning", "xpub_details"] }
   ],
 
   "screens": {
@@ -692,6 +694,80 @@
         ]},
         { "type": "spacer", "grow": true },
         { "type": "keyboard", "style": "Loupe" }
+      ]
+    },
+
+    "xpub_sigtype": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "sign", "label": "Single sig", "go": "xpub_scripttype" },
+        { "type": "list_item", "icon": "sign", "label": "Multisig", "go": "xpub_scripttype" }
+      ]
+    },
+
+    "xpub_scripttype": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "derivation", "label": "Native Segwit", "go": "xpub_coordinator",
+          "set": { "derivation": "m/84'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Nested Segwit", "go": "xpub_coordinator",
+          "set": { "derivation": "m/49'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Legacy", "go": "xpub_coordinator",
+          "set": { "derivation": "m/44'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Taproot", "go": "xpub_coordinator",
+          "set": { "derivation": "m/86'/0'/0'" } },
+        { "type": "list_item", "icon": "derivation", "label": "Custom Derivation", "muted": true }
+      ]
+    },
+
+    "xpub_coordinator": {
+      "type": "menu_list",
+      "navbar": { "title": "Export Xpub", "left": "back" },
+      "body": [
+        { "type": "list_item", "icon": "bitcoin", "label": "BlueWallet", "go": "xpub_warning", "set": { "coordinator": "BlueWallet" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Nunchuk", "go": "xpub_warning", "set": { "coordinator": "Nunchuk" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Sparrow", "go": "xpub_warning", "set": { "coordinator": "Sparrow" } },
+        { "type": "list_item", "icon": "bitcoin", "label": "Specter Desktop", "go": "xpub_warning",
+          "set": { "coordinator": "Specter Desktop" } }
+      ]
+    },
+
+    "xpub_warning": {
+      "type": "dialog",
+      "navbar": { "title": "Caution", "left": "back" },
+      "body": [
+        { "type": "message", "kind": "warning", "badge": "Privacy leak",
+          "body": "An Xpub can be used to view all of this wallet's future transactions." }
+      ],
+      "actions": [
+        { "type": "cta", "label": "I understand", "kind": "primary", "go": "xpub_details" }
+      ]
+    },
+
+    "xpub_details": {
+      "type": "review",
+      "navbar": { "title": "Xpub Details", "left": "back" },
+      "body": [
+        { "type": "info_card", "icon": "fingerprint", "label": "Fingerprint", "value": "{seed_fp}", "mono": true },
+        { "type": "info_card", "icon": "derivation", "label": "Derivation", "value": "{derivation}", "mono": true },
+        { "type": "info_card", "icon": "qrcode", "label": "Xpub", "mono": true, "style": "caption",
+          "value": "zpub6rGMo73c5Uv5Ck4csPwB5VPFkN3vGjPXmDLBFMxqZW…" }
+      ],
+      "actions": [
+        { "type": "cta", "label": "Export Xpub", "kind": "primary", "go": "xpub_qr" }
+      ]
+    },
+
+    "xpub_qr": {
+      "type": "review",
+      "navbar": { "title": "Xpub", "subtitle": "Scan with {coordinator}", "left": "back" },
+      "body": [
+        { "type": "qr_display", "frames": 1, "note": "zpub6rGMo73c5Uv5Ck4csPwB5VPFkN3vGjPXmDLBFMxqZW…" }
+      ],
+      "actions": [
+        { "type": "qr_controls", "cta": { "label": "Done", "go": "home/seed" } }
       ]
     }
   }
