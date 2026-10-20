@@ -270,7 +270,7 @@ void qr_status(QrShow* s) {
             lv_obj_set_flex_grow(b, 1);
             lv_obj_set_style_radius(b, pt(2), 0);
             lv_obj_set_style_bg_color(b, color(i <= s->frame ? "active" : "inactive"), 0);
-            lv_obj_set_style_bg_opa(b, i < s->frame ? opacity("tintBorder") : LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_opa(b, i < s->frame ? opacity("tintBorder") : (lv_opa_t)LV_OPA_COVER, 0);
         }
     }
     mono(s->status, std::to_string(s->frame + 1) + " / " + std::to_string(total), "caption", "fg2");
@@ -587,7 +587,8 @@ void scan_build(Scan* s) {
 // {"frames": n (1 = a still code), "note": text under a still code}. Tap the code to
 // pause; the code's plate is the brightness.
 lv_obj_t* qr_display(lv_obj_t* parent, const json& n) {
-    auto* s = new QrShow{n};
+    auto* s = new QrShow();
+    s->node = n;
     s->base = n.value("frames", 1);
     g_show = s;
     lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, metric("bodyGap"));
@@ -642,7 +643,8 @@ lv_obj_t* qr_controls(lv_obj_t* parent, const json& n) {
 // plain viewfinder), "next": {tap keys}, "phase": pins a state for the canvas}.
 // Fills the screen (use it on a "bleed" screen with no navbar; it draws its own).
 lv_obj_t* scanner(lv_obj_t* parent, const json& n) {
-    auto* s = new Scan{n};
+    auto* s = new Scan();
+    s->node = n;
     g_scan = s;
     s->total = n.value("total", 0);
     std::string phase = str(n, "phase");

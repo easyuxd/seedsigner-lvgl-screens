@@ -522,7 +522,7 @@ int resolve(const Style& st, float x, float y, const Keys& keys) {
 }
 
 struct Tray {
-    const Style* st;
+    const Style* st = nullptr;
     std::string mode = "abc", shift = "on";  // starts capitalised; off | on (one-shot) | lock
     Keys keys;
     std::vector<lv_obj_t*> caps, claims;
@@ -797,7 +797,8 @@ void on_tray(lv_event_t* e) {
 }
 
 lv_obj_t* tray(lv_obj_t* parent, const Style& st, const std::string& component) {
-    auto* t = new Tray{&st};
+    auto* t = new Tray();
+    t->st = &st;
     t->obj = box(parent);
     lv_obj_set_size(t->obj, lv_pct(100), pt(st.tray_h));
     lv_obj_set_style_bg_color(t->obj, color("kbTray"), 0);
@@ -989,7 +990,9 @@ void on_dice_delete(lv_event_t* e) { delete static_cast<Dice*>(lv_event_get_user
 // {"state": key, "placeholder", "max": characters (0 = no limit)}. Tap to put the caret
 // at the end. Mono, so every character can be checked.
 lv_obj_t* text_field(lv_obj_t* parent, const json& n) {
-    auto* f = new Field{str(n, "state", "text"), str(n, "placeholder")};
+    auto* f = new Field();
+    f->key = str(n, "state", "text");
+    f->placeholder = str(n, "placeholder");
     f->max = (size_t)n.value("max", 0);
     f->cursor = utf8_len(field_value(f));
     g_field = f;
@@ -1037,7 +1040,8 @@ lv_obj_t* numpad(lv_obj_t* parent, const json&) { return tray(parent, kNumpad, "
 // {"words": demo count, "next": {tap keys}}. State "word_no" is the word being entered.
 // The demo asks for a few words, not all 12 or 24 (backlog: the full flow).
 lv_obj_t* word_entry(lv_obj_t* parent, const json& n) {
-    auto* w = new WordEntry{n};
+    auto* w = new WordEntry();
+    w->node = n;
     int no = state().value("word_no", 1), demo = n.value("words", 3);
     lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, space("xs"));
     lv_obj_set_width(o, lv_pct(100));
@@ -1115,7 +1119,8 @@ lv_obj_t* word_entry(lv_obj_t* parent, const json& n) {
 // {"rolls": demo count, "next": {tap keys}}: the demo needs a few rolls, not 50 or 99
 // (backlog: the full flow).
 lv_obj_t* dice_pad(lv_obj_t* parent, const json& n) {
-    auto* d = new Dice{n};
+    auto* d = new Dice();
+    d->node = n;
     d->need = n.value("rolls", 6);
     lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, metric("bodyGap"));
     lv_obj_set_width(o, lv_pct(100));

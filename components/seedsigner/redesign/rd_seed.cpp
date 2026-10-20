@@ -104,7 +104,9 @@ lv_obj_t* word_list(lv_obj_t* parent, const json& n) {
 // {"answer", "choices": [4 words], "next": {tap keys}}. Fills the spare height and
 // centres the choices in it.
 lv_obj_t* word_quiz(lv_obj_t* parent, const json& n) {
-    auto* q = new Quiz{n, str(n, "answer")};
+    auto* q = new Quiz();
+    q->node = n;
+    q->answer = str(n, "answer");
     lv_obj_t* o = flex(parent, LV_FLEX_FLOW_COLUMN, metric("bodyGap"));
     lv_obj_set_width(o, lv_pct(100));
     lv_obj_set_flex_grow(o, 1);

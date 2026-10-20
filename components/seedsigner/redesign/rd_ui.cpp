@@ -1018,7 +1018,7 @@ lv_obj_t* spinner(lv_obj_t* parent, const json& n) {
 
 struct Slide {
     json node;
-    lv_obj_t *track, *wake, *hint, *thumb, *glyph;
+    lv_obj_t *track = nullptr, *wake = nullptr, *hint = nullptr, *thumb = nullptr, *glyph = nullptr;
     std::vector<lv_obj_t*> chevs;
     int x = 0, from_px = 0, from_x = 0, moved = 0;
     bool done = false;
@@ -1160,7 +1160,8 @@ void slide_chevron_opa(void* chev, int32_t v) { lv_obj_set_style_opa(static_cast
 lv_obj_t* slide_to_confirm(lv_obj_t* parent, const json& n) {
     int pad = metric("slidePad");
     int thumb_px = metric("slideH") - 2 * pad;
-    auto* s = new Slide{n};
+    auto* s = new Slide();
+    s->node = n;
     s->track = box(parent);
     lv_obj_set_size(s->track, lv_pct(100), metric("slideH"));
     lv_obj_set_style_radius(s->track, radius("md"), 0);
