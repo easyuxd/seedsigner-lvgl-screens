@@ -66,4 +66,5 @@ You never refresh the browser yourself.
 | See which prototype screens are ported | [screen-coverage.md](screen-coverage.md) |
 | See what's planned | [backlog.md](backlog.md) |
 | Understand why something is the way it is | [decisions.md](decisions.md) |
+| See how the Redesign differs from upstream SeedSigner | [redesign-changes.md](redesign-changes.md) |
 | The project in one page | [overview.md](overview.md) |

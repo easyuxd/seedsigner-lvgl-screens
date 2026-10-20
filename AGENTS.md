@@ -60,6 +60,7 @@ Comments, version history and snapshots live in `.studio/` (gitignored). Never e
 | which prototype screens are ported, what to port next | context/screen-coverage.md |
 | what's planned or deferred | context/backlog.md |
 | why something is the way it is | context/decisions.md |
+| how the Redesign differs from upstream SeedSigner's design system | context/redesign-changes.md |
 | past design explorations (standalone HTML mocks) | explorations/README.md |
 | Classic screens, fonts/i18n, upstream internals | `README.md` and upstream `docs/` |
 
